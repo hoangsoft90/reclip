@@ -19,16 +19,6 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Fix JVM target mismatch using JVM Toolchain (recommended by Gradle)
-// This ensures Java AND Kotlin both use JDK 17
-subprojects {
-    pluginManager.withPlugin("org.jetbrains.kotlin.android") {
-        configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
-            jvmToolchain(17)
-        }
-    }
-}
-
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
