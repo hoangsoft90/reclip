@@ -1,0 +1,59 @@
+name: Build Debug APK
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation (drift)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build debug APK (gradle direct, no EAS)
+        run: |
+          cd android
+          ./gradlew assembleDebug
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reclip-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Build summary
+        run: |
+          echo "## Build Complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**APK artifact:** \`reclip-debug-apk\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration:** ${{ steps.build.outputs.duration || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download from Actions → Artifacts" >> $GITHUB_STEP_SUMMARY
