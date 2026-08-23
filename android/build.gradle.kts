@@ -20,18 +20,9 @@ subprojects {
 }
 
 // Fix JVM target mismatch for ALL subplugins (receive_sharing_intent, etc.)
-// Use plugins.withId to avoid "already evaluated" error
 subprojects {
     plugins.withId("com.android.application") {
         extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension> {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
-    }
-    plugins.withId("com.android.library") {
-        extensions.configure<com.android.build.gradle.internal.dsl.LibraryExtension> {
             compileOptions {
                 sourceCompatibility = JavaVersion.VERSION_17
                 targetCompatibility = JavaVersion.VERSION_17
