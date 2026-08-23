@@ -43,15 +43,17 @@ jobs:
 
       - name: Find APK file
         run: |
-          find android/app/build -name "*.apk" -type f
-          ls -la android/app/build/outputs/ 2>/dev/null || echo "outputs dir not found"
-          ls -la android/app/build/outputs/apk/ 2>/dev/null || echo "apk dir not found"
+          echo "Searching for APK files..."
+          find . -name "*.apk" -type f 2>/dev/null
+          echo "---"
+          ls -la build/app/outputs/flutter-apk/ 2>/dev/null || echo "flutter-apk dir not found"
+          ls -la build/app/outputs/ 2>/dev/null || echo "outputs dir not found"
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: reclip-debug-apk
-          path: android/app/build/outputs/**/*.apk
+          path: build/app/outputs/flutter-apk/*.apk
           retention-days: 7
           if-no-files-found: error
 
