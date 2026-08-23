@@ -37,23 +37,21 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# Drift generated code is committed (needed for build)
-
-# Platform directories
+# Android build artifacts (keep gradle wrapper!)
 /android/.gradle/
 /android/build/
 /android/app/build/
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
 /android/local.properties
 /android/.idea/
 /android/captures/
-/android/gradlew
-/android/gradlew.bat
-/android/gradle/
 
-# iOS (not in scope but ignore anyway)
+# Keep gradle wrapper files (NEEDED for CI build)
+!/android/gradlew
+!/android/gradlew.bat
+!/android/gradle/
+
+# iOS (not in scope)
 /ios/
