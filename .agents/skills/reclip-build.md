@@ -52,7 +52,6 @@ git push origin main
 /android/gradlew.bat
 /android/gradle/
 ```
-**Why:** CI runs `./gradlew assembleDebug` — needs gradlew script + wrapper jar.
 
 ### 2. Gradle + AGP + Flutter version MUST match
 | Component | WRONG | CORRECT |
@@ -61,72 +60,46 @@ git push origin main
 | AGP | 9.1.0 | 8.7.0 |
 | Kotlin | 2.4.0 | 2.0.21 |
 
-**Error:** `unable to resolve class groovy.xml.QName`
-**Why:** Gradle 9.x removed `groovy.xml.QName` which `flutter.groovy` imports.
-
-### 3. JVM target mismatch — use `kotlin.jvm.target.validation.mode=warning`
+### 3. JVM target mismatch — use gradle.properties
 ```properties
-# gradle.properties
 kotlin.jvm.target.validation.mode=warning
 ```
-**Why:** `receive_sharing_intent` uses Java 1.8, main app uses Kotlin 17. Cannot override plugin's compileOptions (finalized). Set validation to warning.
 
-### 4. DON'T use `kotlin { compilerOptions { ... } }` in app/build.gradle.kts
+### 4. Kotlin plugin MUST be in app/build.gradle.kts
 ```kotlin
-// WRONG - causes "Unresolved reference" error
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
-    }
-}
-
-// CORRECT - use compileOptions only
-android {
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")  // <-- ADD THIS!
+    id("dev.flutter.flutter-gradle-plugin")
 }
 ```
+**Error:** `ClassNotFoundException: com.xxx.MainActivity`
 
-### 5. DON'T use `afterEvaluate` with `evaluationDependsOn`
-```kotlin
-// WRONG - "Cannot run Project.afterEvaluate when already evaluated"
-subprojects {
-    project.evaluationDependsOn(":app")
-}
-subprojects {
-    afterEvaluate { ... }
-}
-
-// CORRECT - use plugins.withId (but be careful with extension types)
-subprojects {
-    plugins.withId("com.android.application") {
-        // configure...
-    }
-}
+### 5. url_launcher needs `<queries>` in AndroidManifest.xml
+```xml
+<!-- Required for url_launcher to work on Android 11+ -->
+<queries>
+    <intent>
+        <action android:name="android.intent.action.VIEW" />
+        <data android:scheme="https" />
+    </intent>
+</queries>
 ```
+**Error:** `UrlLauncher: component name for ... is null`
+**Why:** Android 11+ requires apps to declare which other apps they query.
 
-### 6. Build output path may be redirected
-```kotlin
-// In android/build.gradle.kts
-rootProject.layout.buildDirectory.value(newBuildDir)  // Redirects output!
-```
-**APK location:** `build/app/outputs/flutter-apk/app-debug.apk` (NOT `android/app/build/...`)
-
-### 7. database.g.dart must be committed
-Drift generated code must be in repo to prevent first-build failures.
-
-### 8. Don't ignore too aggressive
-**KHÔNG BAO GIỜ ignore:** gradlew, gradle/, .g.dart files, pubspec.lock
+### 6. DON'T use `kotlin { compilerOptions { ... } }` in app/build.gradle.kts
+### 7. DON'T use `afterEvaluate` with `evaluationDependsOn`
+### 8. Build output path may be redirected
+### 9. database.g.dart must be committed
 
 ## Pre-push Checklist
 ```
 [ ] flutter test — all pass
-[ ] Kiem tra Gradle version — 8.9
-[ ] Kiem tra AGP version — 8.7.0
-[ ] Kiem tra .gitignore — gradlew NOT ignored
-[ ] Kiem tra database.g.dart — committed
-[ ] Kiem tra gradle.properties — kotlin.jvm.target.validation.mode=warning
-[ ] KHONG co kotlin { compilerOptions } trong app/build.gradle.kts
+[ ] Gradle version — 8.9
+[ ] AGP version — 8.7.0
+[ ] .gitignore — gradlew NOT ignored
+[ ] app/build.gradle.kts — has Kotlin plugin
+[ ] AndroidManifest.xml — has <queries> for url_launcher
+[ ] gradle.properties — kotlin.jvm.target.validation.mode=warning
 ```
