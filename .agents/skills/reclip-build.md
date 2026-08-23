@@ -66,7 +66,7 @@ git push origin main
 
 | Component | WRONG | CORRECT |
 |-----------|-------|--------|
-| Gradle | 9.3.1 | 8.7 |
+| Gradle | 9.3.1 | 8.9 |
 | AGP | 9.1.0 | 8.7.0 |
 | Kotlin | 2.4.0 | 2.0.21 |
 
