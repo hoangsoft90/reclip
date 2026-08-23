@@ -32,7 +32,13 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
+
+    <!-- Required for url_launcher to query browser apps on Android 11+ -->
     <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
