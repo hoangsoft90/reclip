@@ -72,13 +72,13 @@ Hiển thị text "No tags added" — chưa implement logic.
 - Reference: `lib/features/smart_save/presentation/smart_save_bottom_sheet.dart:71-76`
 
 ### REQ-7: Save button
-Nút "Save" → dismiss sheet. **Hiện tại KHÔNG update DB** — chỉ dismiss.
+Nút "Save" → update note + whySaved vào DB → dismiss sheet.
 
 **Scenario: Bấm Save**
-- Given: Sheet mở
+- Given: Sheet mở, user đã nhập note "Read later" và chọn whySaved = "read_later"
 - When: Bấm nút "Save"
-- Then: `Navigator.of(context).pop()` — dismiss sheet, KHÔNG lưu thay đổi
-- Reference: `lib/features/smart_save/presentation/smart_save_bottom_sheet.dart:93-104`
+- Then: Gọi `db.updateSavedItem(id: item.id, note: "Read later", whySaved: "read_later")` → dismiss sheet
+- Reference: `lib/features/smart_save/presentation/smart_save_bottom_sheet.dart:155-161`
 
 ### REQ-8: Cancel button
 Nút "Cancel" → dismiss sheet.
@@ -90,5 +90,6 @@ Nút "Cancel" → dismiss sheet.
 - Reference: `lib/features/smart_save/presentation/smart_save_bottom_sheet.dart:106-114`
 
 ## Cần làm rõ
-- **Save button chưa implement logic** — `onPressed` chỉ gọi `Navigator.pop()`. Note, whySaved, collection, tags thay đổi KHÔNG được lưu vào DB. Đây là known gap — cần implement update DB khi bấm Save.
-- Smart Save sheet có thể được mở từ 2 nơi: (1) Item Detail Screen nút "Add details", (2) QuickSaveToastOverlay nút "Add details". Cả hai đều truyền `SavedItem` vào sheet.
+- **Collection và Tags** vẫn là placeholder — chưa implement logic lưu vào DB. Save button chỉ lưu note + whySaved.
+- Smart Save sheet có thể được mở từ 2 nơi: (1) Item Detail Screen nút "Add details", (2) QuickSaveToastOverlay nút "Add details". Cả hai đều truyền `SavedItem` + `AppDatabase` vào sheet.
+- `SmartSaveBottomSheet` nhận `AppDatabase db` param — các call sites phải truyền db vào.
