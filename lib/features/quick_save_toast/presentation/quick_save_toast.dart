@@ -148,29 +148,31 @@ class QuickSaveToastOverlay {
     _currentEntry?.remove();
     _currentEntry = null;
 
-    // Check if Overlay is available
-    final overlay = Overlay.of(context, nullOk: true);
-    if (overlay == null) {
-      // Overlay not ready yet, skip showing toast
-      return;
-    }
-
-    _currentEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        bottom: 0,
-        left: 0,
-        right: 0,
-        child: QuickSaveToast(
-          item: item,
-          isNew: isNew,
-          onDismiss: () {
-            _currentEntry?.remove();
-            _currentEntry = null;
-          },
+    // Try to get Overlay, skip if not available
+    OverlayEntry? entry;
+    try {
+      entry = OverlayEntry(
+        builder: (context) => Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: QuickSaveToast(
+            item: item,
+            isNew: isNew,
+            onDismiss: () {
+              entry?.remove();
+              _currentEntry = null;
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    overlay.insert(_currentEntry!);
+      // This may throw if no Overlay is available
+      Overlay.of(context).insert(entry);
+      _currentEntry = entry;
+    } catch (e) {
+      // Overlay not available yet, silently skip
+      entry?.remove();
+    }
   }
 }
