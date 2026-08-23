@@ -102,5 +102,5 @@ Items có `isFavorite = true` hiện star icon.
 - Reference: `lib/features/library/presentation/library_screen.dart:169` (`item.isFavorite`)
 
 ## Cần làm rõ
-- `_getThumbnailLocalPath()` hiện luôn trả về `null` — thumbnail display chưa hoạt động thực sự. Placeholder icon được hiển thị thay thế. Cần kết nối với `ThumbnailDownloadService` + query bảng `thumbnails` để hiển thị thumbnail thật.
+- Thumbnail display đã được kết nối với DB qua `getThumbnailPathsForItems()` batch query. LibraryScreen preload thumbnails khi items thay đổi, dùng `Image.file()` cho local cached thumbnails. Fallback sang placeholder icon khi chưa có thumbnail.
 - Offline banner và Faceted Filter được render trong cùng screen nhưng là capability riêng, xem spec `offline-banner` và `faceted-filter`.

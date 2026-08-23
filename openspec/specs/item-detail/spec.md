@@ -121,5 +121,5 @@ Nút star trên AppBar toggle `isFavorite`. Hiện tại chỉ render icon, onPr
 
 ## Cần làm rõ
 - Favorite toggle và Options menu đều có `onPressed: () {}` — chưa implement. Đây là Phase 3 work.
-- Thumbnail display chưa hoạt động — `_getThumbnailLocalPath` không tồn tại trong ItemDetailScreen (trái với LibraryScreen). Placeholder luôn hiển thị.
+- Thumbnail display đã được kết nối: FutureBuilder query `findThumbnailByItemId()`, dùng `Image.file()` cho local cached thumbnail. Fallback placeholder khi chưa có.
 - Cả "Online to view" và "Video requires Internet" badge đều hiện cùng lúc cho video items — có thể redundancy.
