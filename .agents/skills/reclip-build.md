@@ -65,14 +65,56 @@ git push origin main
 Drift generated code (`lib/core/database/database.g.dart`) must be in repo.
 CI runs `build_runner` anyway, but having it committed prevents first-build failures.
 
-### 3. Don't ignore too aggressively
-When creating .gitignore for Flutter, only ignore:
+### 3. JVM Target Mismatch (Gradle)
+**Lỗi:** `compileDebugJavaWithJavac (Java 1.8) vs compileDebugKotlin (Kotlin 17)`
+**Fix:** Trong `android/build.gradle`, thêm block:
+```groovy
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+        if (project.plugins.hasPlugin("kotlin-android")) {
+            project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                kotlinOptions {
+                    jvmTarget = "17"
+                }
+            }
+        }
+    }
+}
+```
+**Cảnh báo:** KHÔNG dùng `gradle.projectsEvaluated` — nó trigger early evaluation và crash flutter.groovy.
+
+### 4. Unused import warnings
+```bash
+flutter analyze
+```
+Xoá tất cả unused import. Một số workflow dùng `--fatal-warnings` sẽ fail.
+
+### 5. Don't ignore too aggressively
+Khi tạo .gitignore cho Flutter, chỉ ignore:
 - Build outputs (`/build/`, `android/app/build/`)
 - IDE files (`.idea/`, `.vscode/`)
 - Generated plugins (`.flutter-plugins`)
 - Local config (`local.properties`)
 
-**NEVER ignore:** gradlew, gradle/, .g.dart files, pubspec.lock
+**KHÔNG BAO GIỜ ignore:** gradlew, gradle/, .g.dart files, pubspec.lock
+
+## Pre-push Checklist
+```
+[ ] flutter analyze — 0 errors
+[ ] flutter test — all pass
+[ ] Kiem tra imports — khong co unused import
+[ ] Kiem tra subprojects — JVM target match
+[ ] Kiem tra .gitignore — gradlew NOT ignored
+[ ] Kiem tra database.g.dart — committed
+```
 
 ## File Structure
 ```
