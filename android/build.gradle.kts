@@ -19,12 +19,12 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Fix JVM target mismatch: set Kotlin jvmTarget to 17 for ALL subprojects
-// Don't touch compileOptions (already finalized by plugins)
+// Fix JVM target mismatch using JVM Toolchain (recommended by Gradle)
+// This ensures Java AND Kotlin both use JDK 17
 subprojects {
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    pluginManager.withPlugin("org.jetbrains.kotlin.android") {
+        configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
+            jvmToolchain(17)
         }
     }
 }
