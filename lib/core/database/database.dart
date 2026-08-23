@@ -117,10 +117,11 @@ class AppDatabase extends _$AppDatabase {
     return MigrationStrategy(
       onCreate: (m) async {
         await m.createAll();
-        // FTS5 virtual table
+        // FTS5 virtual table - include original_url for Phase 1 search
         await customStatement('''
           CREATE VIRTUAL TABLE IF NOT EXISTS saved_items_fts USING fts5(
             item_id UNINDEXED,
+            original_url,
             title,
             description,
             note,
@@ -131,13 +132,13 @@ class AppDatabase extends _$AppDatabase {
         // Triggers for FTS5 sync
         await customStatement('''
           CREATE TRIGGER IF NOT EXISTS saved_items_ai AFTER INSERT ON saved_items BEGIN
-            INSERT INTO saved_items_fts(item_id, title, description, note)
-            VALUES (new.id, new.title, new.description, new.note);
+            INSERT INTO saved_items_fts(item_id, original_url, title, description, note)
+            VALUES (new.id, new.original_url, new.title, new.description, new.note);
           END;
         ''');
         await customStatement('''
           CREATE TRIGGER IF NOT EXISTS saved_items_au AFTER UPDATE ON saved_items BEGIN
-            UPDATE saved_items_fts SET title = new.title, description = new.description, note = new.note
+            UPDATE saved_items_fts SET original_url = new.original_url, title = new.title, description = new.description, note = new.note
             WHERE item_id = new.id;
           END;
         ''');
@@ -194,6 +195,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<SavedItem>> searchSavedItems(String query) async {
+    // Search FTS5 table (includes original_url, title, description, note)
     final results = await customSelect(
       'SELECT item_id FROM saved_items_fts WHERE saved_items_fts MATCH ?',
       variables: [Variable.withString(query)],
