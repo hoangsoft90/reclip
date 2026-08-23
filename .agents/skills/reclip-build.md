@@ -9,7 +9,7 @@ description: Build debug APK for Reclip Flutter app using GitHub Actions. Use wh
 - **Repo:** https://github.com/hoangsoft90/reclip
 - **Branch:** main
 - **Framework:** Flutter 3.24+ with Drift (SQLite)
-- **Build:** Gradle directly (no EAS token needed)
+- **Build:** Gradle 8.7 directly (no EAS token needed)
 - **gh_token:** Ask user if not in environment
 
 ## Build Workflow
@@ -61,11 +61,23 @@ git push origin main
 ```
 **Why:** CI runs `./gradlew assembleDebug` — needs gradlew script + wrapper jar.
 
-### 2. database.g.dart must be committed
+### 2. Gradle version MUST match Flutter version
+**Flutter 3.24 requires Gradle 8.x (NOT 9.x)**
+```
+# WRONG - Gradle 9.x breaks flutter.groovy
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-all.zip
+
+# CORRECT - Gradle 8.7 works with Flutter 3.24
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-all.zip
+```
+**Error:** `unable to resolve class groovy.xml.QName`
+**Why:** Gradle 9.x removed `groovy.xml.QName` which `flutter.groovy` imports.
+
+### 3. database.g.dart must be committed
 Drift generated code (`lib/core/database/database.g.dart`) must be in repo.
 CI runs `build_runner` anyway, but having it committed prevents first-build failures.
 
-### 3. JVM Target Mismatch (Gradle)
+### 4. JVM Target Mismatch (Gradle)
 **Lỗi:** `compileDebugJavaWithJavac (Java 1.8) vs compileDebugKotlin (Kotlin 17)`
 **Fix:** Trong `android/build.gradle`, thêm block:
 ```groovy
@@ -89,15 +101,8 @@ subprojects {
     }
 }
 ```
-**Cảnh báo:** KHÔNG dùng `gradle.projectsEvaluated` — nó trigger early evaluation và crash flutter.groovy.
 
-### 4. Unused import warnings
-```bash
-flutter analyze
-```
-Xoá tất cả unused import. Một số workflow dùng `--fatal-warnings` sẽ fail.
-
-### 5. Don't ignore too aggressively
+### 5. Don't ignore too aggressive
 Khi tạo .gitignore cho Flutter, chỉ ignore:
 - Build outputs (`/build/`, `android/app/build/`)
 - IDE files (`.idea/`, `.vscode/`)
@@ -111,7 +116,7 @@ Khi tạo .gitignore cho Flutter, chỉ ignore:
 [ ] flutter analyze — 0 errors
 [ ] flutter test — all pass
 [ ] Kiem tra imports — khong co unused import
-[ ] Kiem tra subprojects — JVM target match
+[ ] Kiem tra Gradle version — 8.x cho Flutter 3.24
 [ ] Kiem tra .gitignore — gradlew NOT ignored
 [ ] Kiem tra database.g.dart — committed
 ```
@@ -129,4 +134,5 @@ android/
 ├── gradlew          ← MUST be committed!
 ├── gradlew.bat      ← MUST be committed!
 ├── gradle/wrapper/  ← MUST be committed!
+│   └── gradle-wrapper.properties  ← Gradle 8.7 for Flutter 3.24
 ```
