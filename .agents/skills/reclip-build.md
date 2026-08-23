@@ -9,7 +9,7 @@ description: Build debug APK for Reclip Flutter app using GitHub Actions. Use wh
 - **Repo:** https://github.com/hoangsoft90/reclip
 - **Branch:** main
 - **Framework:** Flutter 3.24+ with Drift (SQLite)
-- **Build:** Gradle 8.7 directly (no EAS token needed)
+- **Build:** Gradle 8.9 + AGP 8.7.0 (no EAS token needed)
 - **gh_token:** Ask user if not in environment
 
 ## Build Workflow
@@ -19,7 +19,6 @@ description: Build debug APK for Reclip Flutter app using GitHub Actions. Use wh
 cd /home/kythuat_hoangweb/reclip
 /google/flutter/bin/flutter test
 ```
-All 23 tests must pass before pushing.
 
 ### Step 2: Run code generation (if database.dart changed)
 ```bash
@@ -59,83 +58,48 @@ git push origin main
 !/android/gradlew.bat
 !/android/gradle/
 ```
-**Why:** CI runs `./gradlew assembleDebug` — needs gradlew script + wrapper jar.
 
 ### 2. Gradle + AGP + Flutter version MUST match
-**Flutter 3.24 requires Gradle 8.x + AGP 8.x (NOT 9.x)**
-
 | Component | WRONG | CORRECT |
 |-----------|-------|--------|
 | Gradle | 9.3.1 | 8.9 |
 | AGP | 9.1.0 | 8.7.0 |
 | Kotlin | 2.4.0 | 2.0.21 |
 
-**Error 1:** `unable to resolve class groovy.xml.QName`
+**Error:** `unable to resolve class groovy.xml.QName`
 **Why:** Gradle 9.x removed `groovy.xml.QName` which `flutter.groovy` imports.
 
-**Error 2:** `Minimum supported Gradle version is 9.3.1`
-**Why:** AGP 9.x requires Gradle 9.x, but Flutter 3.24 needs Gradle 8.x.
+### 3. DON'T use `kotlin { compilerOptions { ... } }` in app/build.gradle.kts
+```kotlin
+// WRONG - causes "Unresolved reference" error
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
 
-### 3. database.g.dart must be committed
-Drift generated code (`lib/core/database/database.g.dart`) must be in repo.
-CI runs `build_runner` anyway, but having it committed prevents first-build failures.
-
-### 4. JVM Target Mismatch (Gradle)
-**Lỗi:** `compileDebugJavaWithJavac (Java 1.8) vs compileDebugKotlin (Kotlin 17)`
-**Fix:** Trong `android/build.gradle`, thêm block:
-```groovy
-subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty("android")) {
-            project.android {
-                compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_17
-                    targetCompatibility JavaVersion.VERSION_17
-                }
-            }
-        }
-        if (project.plugins.hasPlugin("kotlin-android")) {
-            project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
-                kotlinOptions {
-                    jvmTarget = "17"
-                }
-            }
-        }
+// CORRECT - use compileOptions only
+android {
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 ```
+**Why:** Kotlin plugin may not be available at evaluation time. `compileOptions` is sufficient.
+
+### 4. database.g.dart must be committed
+Drift generated code must be in repo to prevent first-build failures.
 
 ### 5. Don't ignore too aggressive
-Khi tạo .gitignore cho Flutter, chỉ ignore:
-- Build outputs (`/build/`, `android/app/build/`)
-- IDE files (`.idea/`, `.vscode/`)
-- Generated plugins (`.flutter-plugins`)
-- Local config (`local.properties`)
-
 **KHÔNG BAO GIỜ ignore:** gradlew, gradle/, .g.dart files, pubspec.lock
 
 ## Pre-push Checklist
 ```
-[ ] flutter analyze — 0 errors
 [ ] flutter test — all pass
-[ ] Kiem tra imports — khong co unused import
-[ ] Kiem tra Gradle version — 8.x cho Flutter 3.24
+[ ] Kiem tra Gradle version — 8.9
+[ ] Kiem tra AGP version — 8.7.0
 [ ] Kiem tra .gitignore — gradlew NOT ignored
 [ ] Kiem tra database.g.dart — committed
-```
-
-## File Structure
-```
-lib/
-├── main.dart + app.dart
-├── core/ (constants, database, url, utils)
-├── features/ (share_intent, library, item_detail, search, etc.)
-test/
-├── core/ (url_normalizer_test, platform_detector_test)
-├── features/share_intent/ (quick_save_service_test)
-android/
-├── gradlew          ← MUST be committed!
-├── gradlew.bat      ← MUST be committed!
-├── gradle/wrapper/  ← MUST be committed!
-│   └── gradle-wrapper.properties  ← Gradle 8.7 for Flutter 3.24
+[ ] KHONG co kotlin { compilerOptions } trong app/build.gradle.kts
 ```
