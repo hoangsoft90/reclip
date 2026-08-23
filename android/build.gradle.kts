@@ -19,23 +19,29 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Fix JVM target mismatch: compileDebugJavaWithJavac (1.8) vs compileDebugKotlin (17)
-// This ensures ALL subplugins (like receive_sharing_intent) use Java 17
+// Fix JVM target mismatch for ALL subplugins (receive_sharing_intent, etc.)
+// Use plugins.withId to avoid "already evaluated" error
 subprojects {
-    afterEvaluate {
-        if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
-            project.extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension> {
-                compileOptions {
-                    sourceCompatibility = JavaVersion.VERSION_17
-                    targetCompatibility = JavaVersion.VERSION_17
-                }
+    plugins.withId("com.android.application") {
+        extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension> {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
             }
         }
-        if (project.plugins.hasPlugin("org.jetbrains.kotlin.android")) {
-            project.tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                compilerOptions {
-                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-                }
+    }
+    plugins.withId("com.android.library") {
+        extensions.configure<com.android.build.gradle.internal.dsl.LibraryExtension> {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+    }
+    plugins.withId("org.jetbrains.kotlin.android") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
             }
         }
     }
