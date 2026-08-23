@@ -19,21 +19,12 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Fix JVM target mismatch for ALL subplugins (receive_sharing_intent, etc.)
+// Fix JVM target mismatch: set Kotlin jvmTarget to 17 for ALL subprojects
+// Don't touch compileOptions (already finalized by plugins)
 subprojects {
-    plugins.withId("com.android.application") {
-        extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension> {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
-    }
-    plugins.withId("org.jetbrains.kotlin.android") {
-        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            compilerOptions {
-                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-            }
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
 }
