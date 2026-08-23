@@ -1,3 +1,4 @@
+import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:reclip/core/constants/app_strings.dart';
 import 'package:reclip/core/constants/platforms.dart';
@@ -43,17 +44,23 @@ class ItemDetailScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Thumbnail / placeholder
-            Container(
-              width: double.infinity,
-              height: 200,
-              color: platformInfo.color.withOpacity(0.1),
-              child: Center(
-                child: Icon(
-                  platformInfo.icon,
-                  size: 64,
-                  color: platformInfo.color.withOpacity(0.5),
-                ),
-              ),
+            FutureBuilder<Thumbnail?>(
+              future: db.findThumbnailByItemId(item.id),
+              builder: (context, snapshot) {
+                final thumb = snapshot.data;
+                if (thumb != null &&
+                    thumb.localPath != null &&
+                    thumb.downloadStatus == DownloadStatusEnum.done) {
+                  return Image.file(
+                    io.File(thumb.localPath!),
+                    width: double.infinity,
+                    height: 200,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildThumbnailPlaceholder(platformInfo),
+                  );
+                }
+                return _buildThumbnailPlaceholder(platformInfo);
+              },
             ),
             Padding(
               padding: const EdgeInsets.all(16),
@@ -262,6 +269,21 @@ class ItemDetailScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnailPlaceholder(PlatformInfo platformInfo) {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      color: platformInfo.color.withOpacity(0.1),
+      child: Center(
+        child: Icon(
+          platformInfo.icon,
+          size: 64,
+          color: platformInfo.color.withOpacity(0.5),
         ),
       ),
     );

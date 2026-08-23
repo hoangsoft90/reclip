@@ -1,3 +1,4 @@
+import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:reclip/core/constants/app_strings.dart';
 import 'package:reclip/core/database/database.dart';
@@ -23,6 +24,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final _filterController = FacetFilterController();
   final _connectivityService = ConnectivityService();
   bool _isOnline = true;
+  Map<String, String> _thumbnailPaths = {};
 
   @override
   void initState() {
@@ -65,6 +67,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
               stream: widget.db.select(widget.db.savedItems).watch(),
               builder: (context, snapshot) {
                 final allItems = snapshot.data ?? [];
+                // Preload thumbnails when items change
+                if (allItems.isNotEmpty) {
+                  final ids = allItems.map((i) => i.id).toList();
+                  widget.db.getThumbnailPathsForItems(ids).then((paths) {
+                    if (mounted && paths != _thumbnailPaths) {
+                      setState(() => _thumbnailPaths = paths);
+                    }
+                  });
+                }
                 final items = _filterController.applyFilter(allItems);
 
                 if (allItems.isEmpty) {
@@ -248,8 +259,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget _buildThumbnail(SavedItem item, PlatformInfo platformInfo) {
     final thumbnail = _getThumbnailLocalPath(item);
     if (thumbnail != null) {
-      return Image.asset(
-        thumbnail,
+      return Image.file(
+        io.File(thumbnail),
         width: double.infinity,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildThumbnailPlaceholder(platformInfo),
@@ -263,8 +274,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (thumbnail != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.asset(
-          thumbnail,
+        child: Image.file(
+          io.File(thumbnail),
           width: 48,
           height: 48,
           fit: BoxFit.cover,
@@ -302,9 +313,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   String? _getThumbnailLocalPath(SavedItem item) {
-    // Will be populated from thumbnails table in real app
-    // For now, return null (placeholder icons shown)
-    return null;
+    return _thumbnailPaths[item.id];
   }
 
   void _openDetail(SavedItem item) {

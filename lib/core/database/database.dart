@@ -357,6 +357,20 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
+  /// Get local thumbnail paths for multiple items. Returns map of itemId → localPath.
+  Future<Map<String, String>> getThumbnailPathsForItems(List<String> itemIds) async {
+    if (itemIds.isEmpty) return {};
+    final results = await (select(thumbnails)
+          ..where((t) => t.itemId.isIn(itemIds) & t.downloadStatus.equals('done') & t.localPath.isNotNull()))
+        .get();
+    final map = <String, String>{};
+    for (final row in results) {
+      // Keep first thumbnail per item (if multiple exist, use earliest)
+      map.putIfAbsent(row.itemId, () => row.localPath!);
+    }
+    return map;
+  }
+
   Future<void> updateThumbnailStatus(String id, DownloadStatusEnum status) async {
     await (update(thumbnails)..where((t) => t.id.equals(id)))
         .write(ThumbnailsCompanion(downloadStatus: Value(status)));
