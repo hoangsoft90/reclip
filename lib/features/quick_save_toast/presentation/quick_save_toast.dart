@@ -6,6 +6,7 @@ import 'package:reclip/features/smart_save/presentation/smart_save_bottom_sheet.
 
 class QuickSaveToast extends StatefulWidget {
   final SavedItem? item;
+  final AppDatabase db;
   final bool isNew;
   final VoidCallback? onView;
   final VoidCallback? onDismiss;
@@ -13,6 +14,7 @@ class QuickSaveToast extends StatefulWidget {
   const QuickSaveToast({
     super.key,
     this.item,
+    required this.db,
     this.isNew = true,
     this.onView,
     this.onDismiss,
@@ -68,7 +70,7 @@ class _QuickSaveToastState extends State<QuickSaveToast>
         showModalBottomSheet(
           context: context,
           isScrollControlled: true,
-          builder: (_) => SmartSaveBottomSheet(item: widget.item!),
+          builder: (_) => SmartSaveBottomSheet(item: widget.item!, db: widget.db),
         ).then((_) {
           widget.onDismiss?.call();
         });
@@ -143,7 +145,7 @@ class _QuickSaveToastState extends State<QuickSaveToast>
 class QuickSaveToastOverlay {
   static OverlayEntry? _currentEntry;
 
-  static void show(BuildContext context, SavedItem item, bool isNew) {
+  static void show(BuildContext context, SavedItem item, bool isNew, AppDatabase db) {
     // Remove existing toast if any
     _currentEntry?.remove();
     _currentEntry = null;
@@ -158,6 +160,7 @@ class QuickSaveToastOverlay {
           right: 0,
           child: QuickSaveToast(
             item: item,
+            db: db,
             isNew: isNew,
             onDismiss: () {
               entry?.remove();

@@ -4,8 +4,9 @@ import 'package:reclip/core/database/database.dart';
 
 class SmartSaveBottomSheet extends StatefulWidget {
   final SavedItem item;
+  final AppDatabase db;
 
-  const SmartSaveBottomSheet({super.key, required this.item});
+  const SmartSaveBottomSheet({super.key, required this.item, required this.db});
 
   @override
   State<SmartSaveBottomSheet> createState() => _SmartSaveBottomSheetState();
@@ -84,7 +85,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              // Collection (placeholder for Phase 2)
+              // Collection (placeholder)
               _buildSection(
                 AppStrings.collectionLabel,
                 Container(
@@ -100,7 +101,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                 ),
               ),
               const SizedBox(height: 12),
-              // Tags (placeholder for Phase 2)
+              // Tags (placeholder)
               _buildSection(
                 AppStrings.tagsLabel,
                 Container(
@@ -157,10 +158,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Save details to DB in Phase 2
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: _save,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
@@ -198,6 +196,16 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
         );
       },
     );
+  }
+
+  void _save() async {
+    final note = _noteController.text.trim();
+    await widget.db.updateSavedItem(
+      id: widget.item.id,
+      note: note.isEmpty ? null : note,
+      whySaved: _selectedWhySaved,
+    );
+    if (mounted) Navigator.of(context).pop();
   }
 
   Widget _buildSection(String label, Widget child) {

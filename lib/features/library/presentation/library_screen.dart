@@ -309,7 +309,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   void _openDetail(SavedItem item) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item)),
+      MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item, db: widget.db)),
     );
   }
 

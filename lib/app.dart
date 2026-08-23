@@ -57,7 +57,7 @@ class _ReclipAppState extends ConsumerState<ReclipApp>
     if (item != null && mounted) {
       final now = DateTime.now().millisecondsSinceEpoch;
       final isNew = (now - item.savedAt) < 2000;
-      QuickSaveToastOverlay.show(context, item, isNew);
+      QuickSaveToastOverlay.show(context, item, isNew, db);
       // Trigger enrichment after new save
       if (isNew) _triggerEnrichment();
     }

@@ -115,7 +115,7 @@ class _SearchScreenState extends State<SearchScreen> {
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => ItemDetailScreen(item: item),
+            builder: (_) => ItemDetailScreen(item: item, db: widget.db),
           ),
         );
       },

@@ -7,8 +7,9 @@ import 'package:reclip/features/smart_save/presentation/smart_save_bottom_sheet.
 
 class ItemDetailScreen extends StatelessWidget {
   final SavedItem item;
+  final AppDatabase db;
 
-  const ItemDetailScreen({super.key, required this.item});
+  const ItemDetailScreen({super.key, required this.item, required this.db});
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +246,7 @@ class ItemDetailScreen extends StatelessWidget {
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
-                          builder: (_) => SmartSaveBottomSheet(item: item),
+                          builder: (_) => SmartSaveBottomSheet(item: item, db: db),
                         );
                       },
                       icon: const Icon(Icons.edit),
