@@ -69,7 +69,39 @@ git push origin main
 **Error:** `unable to resolve class groovy.xml.QName`
 **Why:** Gradle 9.x removed `groovy.xml.QName` which `flutter.groovy` imports.
 
-### 3. DON'T use `kotlin { compilerOptions { ... } }` in app/build.gradle.kts
+### 3. JVM target fix: dùng `plugins.withId`, KHÔNG dùng `afterEvaluate`
+
+```kotlin
+// WRONG - conflicts with evaluationDependsOn
+subprojects {
+    afterEvaluate {
+        // ...
+    }
+}
+
+// CORRECT - plugins.withId runs when plugin is applied
+subprojects {
+    plugins.withId("com.android.application") {
+        extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension> {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+        }
+    }
+    plugins.withId("org.jetbrains.kotlin.android") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            }
+        }
+    }
+}
+```
+**Error:** `Cannot run Project.afterEvaluate(Action) when the project is already evaluated.`
+**Why:** Flutter's `build.gradle.kts` uses `evaluationDependsOn(":app")` which forces early evaluation.
+
+### 4. DON'T use `kotlin { compilerOptions { ... } }` in app/build.gradle.kts
 ```kotlin
 // WRONG - causes "Unresolved reference" error
 kotlin {
