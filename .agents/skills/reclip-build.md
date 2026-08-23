@@ -61,17 +61,20 @@ git push origin main
 ```
 **Why:** CI runs `./gradlew assembleDebug` — needs gradlew script + wrapper jar.
 
-### 2. Gradle version MUST match Flutter version
-**Flutter 3.24 requires Gradle 8.x (NOT 9.x)**
-```
-# WRONG - Gradle 9.x breaks flutter.groovy
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-all.zip
+### 2. Gradle + AGP + Flutter version MUST match
+**Flutter 3.24 requires Gradle 8.x + AGP 8.x (NOT 9.x)**
 
-# CORRECT - Gradle 8.7 works with Flutter 3.24
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-all.zip
-```
-**Error:** `unable to resolve class groovy.xml.QName`
+| Component | WRONG | CORRECT |
+|-----------|-------|--------|
+| Gradle | 9.3.1 | 8.7 |
+| AGP | 9.1.0 | 8.7.0 |
+| Kotlin | 2.4.0 | 2.0.21 |
+
+**Error 1:** `unable to resolve class groovy.xml.QName`
 **Why:** Gradle 9.x removed `groovy.xml.QName` which `flutter.groovy` imports.
+
+**Error 2:** `Minimum supported Gradle version is 9.3.1`
+**Why:** AGP 9.x requires Gradle 9.x, but Flutter 3.24 needs Gradle 8.x.
 
 ### 3. database.g.dart must be committed
 Drift generated code (`lib/core/database/database.g.dart`) must be in repo.
