@@ -144,7 +144,16 @@ class QuickSaveToastOverlay {
   static OverlayEntry? _currentEntry;
 
   static void show(BuildContext context, SavedItem item, bool isNew) {
+    // Remove existing toast if any
     _currentEntry?.remove();
+    _currentEntry = null;
+
+    // Check if Overlay is available
+    final overlay = Overlay.of(context, nullOk: true);
+    if (overlay == null) {
+      // Overlay not ready yet, skip showing toast
+      return;
+    }
 
     _currentEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -162,6 +171,6 @@ class QuickSaveToastOverlay {
       ),
     );
 
-    Overlay.of(context).insert(_currentEntry!);
+    overlay.insert(_currentEntry!);
   }
 }
