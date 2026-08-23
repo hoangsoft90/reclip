@@ -41,11 +41,17 @@ jobs:
           cd android
           ./gradlew assembleDebug
 
+      - name: Find APK file
+        run: |
+          find android/app/build -name "*.apk" -type f
+          ls -la android/app/build/outputs/ 2>/dev/null || echo "outputs dir not found"
+          ls -la android/app/build/outputs/apk/ 2>/dev/null || echo "apk dir not found"
+
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: reclip-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/**/*.apk
           retention-days: 7
           if-no-files-found: error
 
@@ -54,6 +60,5 @@ jobs:
           echo "## Build Complete ✅" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**APK artifact:** \`reclip-debug-apk\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Duration:** ${{ steps.build.outputs.duration || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Download from Actions → Artifacts" >> $GITHUB_STEP_SUMMARY
