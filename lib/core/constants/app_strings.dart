@@ -46,4 +46,13 @@ class AppStrings {
   // Library
   static const libraryTitle = 'Library';
   static const searchHint = 'Search library…';
+
+  // Phase 2 - Quick Link Card
+  static const editTitleAction = 'Edit title';
+  static const quickLinkDomainPrefix = 'Saved from';
+
+  // Phase 2 - Edit Title Dialog
+  static const editTitleHint = 'Enter a title for this item';
+  static const editTitleSave = 'Save';
+  static const editTitleCancel = 'Cancel';
 }

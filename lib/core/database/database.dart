@@ -117,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
     return MigrationStrategy(
       onCreate: (m) async {
         await m.createAll();
-        // FTS5 virtual table - include original_url for Phase 1 search
+        // FTS5 virtual table
         await customStatement('''
           CREATE VIRTUAL TABLE IF NOT EXISTS saved_items_fts USING fts5(
             item_id UNINDEXED,
@@ -195,7 +195,6 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<SavedItem>> searchSavedItems(String query) async {
-    // Search FTS5 table (includes original_url, title, description, note)
     final results = await customSelect(
       'SELECT item_id FROM saved_items_fts WHERE saved_items_fts MATCH ?',
       variables: [Variable.withString(query)],
@@ -211,7 +210,8 @@ class AppDatabase extends _$AppDatabase {
     String? description,
     String? author,
     String? authorUrl,
-    MetadataStatusEnum? metadataStatus,
+    MetadataStatusEnum? status,
+    ContentTypeEnum? contentType,
     String? note,
     String? whySaved,
     bool? isFavorite,
@@ -220,21 +220,24 @@ class AppDatabase extends _$AppDatabase {
     await (update(savedItems)..where((t) => t.id.equals(id))).write(
       SavedItemsCompanion(
         title: title != null ? Value(title) : const Value.absent(),
-        description:
-            description != null ? Value(description) : const Value.absent(),
+        description: description != null ? Value(description) : const Value.absent(),
         author: author != null ? Value(author) : const Value.absent(),
         authorUrl: authorUrl != null ? Value(authorUrl) : const Value.absent(),
-        metadataStatus: metadataStatus != null
-            ? Value(metadataStatus)
-            : const Value.absent(),
+        metadataStatus: status != null ? Value(status) : const Value.absent(),
+        contentType: contentType != null ? Value(contentType) : const Value.absent(),
         note: note != null ? Value(note) : const Value.absent(),
         whySaved: whySaved != null ? Value(whySaved) : const Value.absent(),
-        isFavorite:
-            isFavorite != null ? Value(isFavorite) : const Value.absent(),
-        isArchived:
-            isArchived != null ? Value(isArchived) : const Value.absent(),
+        isFavorite: isFavorite != null ? Value(isFavorite) : const Value.absent(),
+        isArchived: isArchived != null ? Value(isArchived) : const Value.absent(),
       ),
     );
+  }
+
+  Future<List<SavedItem>> findByMetadataStatus(MetadataStatusEnum status) async {
+    return (select(savedItems)
+          ..where((t) => t.metadataStatus.equals(status.name))
+          ..orderBy([(t) => OrderingTerm.asc(t.savedAt)]))
+        .get();
   }
 
   // === Collections DAO methods ===
@@ -327,6 +330,72 @@ class AppDatabase extends _$AppDatabase {
       ..where(itemTags.itemId.equals(itemId));
     final results = await query.get();
     return results.map((r) => r.readTable(tags)).toList();
+  }
+
+  // === Thumbnails DAO methods ===
+
+  Future<void> insertThumbnail({
+    required String id,
+    required String itemId,
+    required String remoteUrl,
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await into(thumbnails).insert(
+      ThumbnailsCompanion.insert(
+        id: id,
+        itemId: itemId,
+        remoteUrl: Value(remoteUrl),
+        createdAt: now,
+      ),
+    );
+  }
+
+  Future<Thumbnail?> findThumbnailByItemId(String itemId) async {
+    return (select(thumbnails)
+          ..where((t) => t.itemId.equals(itemId))
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<void> updateThumbnailStatus(String id, DownloadStatusEnum status) async {
+    await (update(thumbnails)..where((t) => t.id.equals(id)))
+        .write(ThumbnailsCompanion(downloadStatus: Value(status)));
+  }
+
+  Future<void> updateThumbnailResult(
+    String id, {
+    required String localPath,
+    required int sizeBytes,
+    required DownloadStatusEnum status,
+  }) async {
+    await (update(thumbnails)..where((t) => t.id.equals(id))).write(
+      ThumbnailsCompanion(
+        localPath: Value(localPath),
+        sizeBytes: Value(sizeBytes),
+        downloadStatus: Value(status),
+      ),
+    );
+  }
+
+  Future<void> clearThumbnailLocalPath(String id) async {
+    await (update(thumbnails)..where((t) => t.id.equals(id)))
+        .write(const ThumbnailsCompanion(localPath: Value(null)));
+  }
+
+  Future<int> sumThumbnailSizeBytes() async {
+    final result = await customSelect(
+      'SELECT COALESCE(SUM(size_bytes), 0) as total FROM thumbnails WHERE download_status = ?',
+      variables: [Variable.withString('done')],
+    ).getSingle();
+    return result.read<int>('total');
+  }
+
+  Future<List<Thumbnail>> findOldestDoneThumbnails({int limit = 10}) async {
+    return (select(thumbnails)
+          ..where((t) => t.downloadStatus.equals('done'))
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
+          ..limit(limit))
+        .get();
   }
 }
 

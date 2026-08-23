@@ -26,13 +26,13 @@ class ItemDetailScreen extends StatelessWidget {
               color: item.isFavorite ? Colors.amber : null,
             ),
             onPressed: () {
-              // TODO: Toggle favorite in Phase 2
+              // TODO: Toggle favorite — Phase 3
             },
           ),
           IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () {
-              // TODO: Show options menu in Phase 2
+              // TODO: Options menu — Phase 3
             },
           ),
         ],
@@ -41,7 +41,7 @@ class ItemDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail placeholder
+            // Thumbnail / placeholder
             Container(
               width: double.infinity,
               height: 200,
@@ -68,37 +68,84 @@ class ItemDetailScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Platform info
+                  // Platform info + content type badge
                   Row(
                     children: [
-                      Icon(
-                        platformInfo.icon,
-                        size: 16,
-                        color: platformInfo.color,
-                      ),
+                      Icon(platformInfo.icon, size: 16, color: platformInfo.color),
                       const SizedBox(width: 6),
                       Text(
                         platformInfo.displayName,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                       ),
                       const SizedBox(width: 12),
                       Text(
                         'Saved ${_formatDate(item.savedAt)}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade500,
-                        ),
+                        style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  // Content type badge
+                  if (item.contentType != ContentTypeEnum.unknown)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(_contentTypeIcon(item.contentType), size: 14),
+                            const SizedBox(width: 4),
+                            Text(
+                              item.contentType.name.toUpperCase(),
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // Author
+                  if (item.author != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.person_outline, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            item.author!,
+                            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // Video badge
+                  if (item.contentType == ContentTypeEnum.video)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.videocam_off, size: 14, color: Colors.orange),
+                          SizedBox(width: 6),
+                          Text(
+                            AppStrings.badgeVideoUnavailableOffline,
+                            style: TextStyle(fontSize: 12, color: Colors.orange),
+                          ),
+                        ],
+                      ),
+                    ),
                   // Online badge
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(8),
@@ -110,10 +157,7 @@ class ItemDetailScreen extends StatelessWidget {
                         SizedBox(width: 6),
                         Text(
                           AppStrings.badgeOnlineToView,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange,
-                          ),
+                          style: TextStyle(fontSize: 12, color: Colors.orange),
                         ),
                       ],
                     ),
@@ -157,8 +201,7 @@ class ItemDetailScreen extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Chip(
                         label: Text(
-                          AppStrings.whySavedOptions[item.whySaved] ??
-                              item.whySaved!,
+                          AppStrings.whySavedOptions[item.whySaved] ?? item.whySaved!,
                           style: const TextStyle(fontSize: 12),
                         ),
                         backgroundColor: Colors.purple.shade50,
@@ -223,10 +266,28 @@ class ItemDetailScreen extends StatelessWidget {
     );
   }
 
+  IconData _contentTypeIcon(ContentTypeEnum type) {
+    switch (type) {
+      case ContentTypeEnum.video:
+        return Icons.videocam;
+      case ContentTypeEnum.image:
+        return Icons.image;
+      case ContentTypeEnum.text:
+        return Icons.article;
+      case ContentTypeEnum.gallery:
+        return Icons.collections;
+      case ContentTypeEnum.link:
+        return Icons.link;
+      case ContentTypeEnum.mixed:
+        return Icons.dashboard;
+      case ContentTypeEnum.unknown:
+        return Icons.help_outline;
+    }
+  }
+
   String _extractDomain(String url) {
     try {
-      final uri = Uri.parse(url);
-      return uri.host;
+      return Uri.parse(url).host;
     } catch (_) {
       return url;
     }

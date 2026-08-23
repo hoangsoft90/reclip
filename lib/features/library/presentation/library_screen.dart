@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:reclip/core/constants/app_strings.dart';
 import 'package:reclip/core/database/database.dart';
 import 'package:reclip/core/constants/platforms.dart';
+import 'package:reclip/core/network/connectivity_service.dart';
 import 'package:reclip/features/item_detail/presentation/item_detail_screen.dart';
+import 'package:reclip/features/library/presentation/widgets/quick_link_card.dart';
+import 'package:reclip/features/library/presentation/widgets/offline_banner.dart';
+import 'package:reclip/features/library/presentation/widgets/facet_filter_bar.dart';
+import 'package:reclip/features/library/application/facet_filter_controller.dart';
 
 class LibraryScreen extends StatefulWidget {
   final AppDatabase db;
@@ -15,6 +20,26 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   bool _isGridView = true;
+  final _filterController = FacetFilterController();
+  final _connectivityService = ConnectivityService();
+  bool _isOnline = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _connectivityService.onlineStatusStream.listen((online) {
+      if (mounted) setState(() => _isOnline = online);
+    });
+    _connectivityService.isOnline.then((online) {
+      if (mounted) setState(() => _isOnline = online);
+    });
+  }
+
+  @override
+  void dispose() {
+    _filterController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,43 +53,61 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ],
       ),
-      body: StreamBuilder<List<SavedItem>>(
-        stream: widget.db.select(widget.db.savedItems).watch(),
-        builder: (context, snapshot) {
-          final items = snapshot.data ?? [];
-          if (items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.bookmark_border,
-                    size: 64,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    AppStrings.libraryEmptyTitle,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    AppStrings.libraryEmptySubtitle,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
+      body: Column(
+        children: [
+          // Offline banner
+          if (!_isOnline) const OfflineBanner(),
+          // Filter bar
+          FacetFilterBar(controller: _filterController),
+          // Items
+          Expanded(
+            child: StreamBuilder<List<SavedItem>>(
+              stream: widget.db.select(widget.db.savedItems).watch(),
+              builder: (context, snapshot) {
+                final allItems = snapshot.data ?? [];
+                final items = _filterController.applyFilter(allItems);
 
-          if (_isGridView) {
-            return _buildGrid(items);
-          }
-          return _buildList(items);
-        },
+                if (allItems.isEmpty) {
+                  return _buildEmptyState();
+                }
+                if (items.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No items match filter',
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                  );
+                }
+
+                if (_isGridView) {
+                  return _buildGrid(items);
+                }
+                return _buildList(items);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bookmark_border, size: 64, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          const Text(
+            AppStrings.libraryEmptyTitle,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            AppStrings.libraryEmptySubtitle,
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
       ),
     );
   }
@@ -81,6 +124,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
+        final isPending = item.metadataStatus == MetadataStatusEnum.pending;
+        final isFailed = item.metadataStatus == MetadataStatusEnum.failed;
+
+        if (isPending || isFailed) {
+          return QuickLinkCard(
+            item: item,
+            onTap: () => _openDetail(item),
+            onEditTitle: () => _showEditTitleDialog(item),
+          );
+        }
         return _buildGridCard(item);
       },
     );
@@ -92,13 +145,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
+        final isPending = item.metadataStatus == MetadataStatusEnum.pending;
+        final isFailed = item.metadataStatus == MetadataStatusEnum.failed;
+
+        if (isPending || isFailed) {
+          return QuickLinkCard(
+            item: item,
+            onTap: () => _openDetail(item),
+            onEditTitle: () => _showEditTitleDialog(item),
+          );
+        }
         return _buildListTile(item);
       },
     );
   }
 
   Widget _buildGridCard(SavedItem item) {
-    final platformInfo = PlatformInfo.info[item.platform] ?? PlatformInfo.info[PlatformEnum.other]!;
+    final platformInfo =
+        PlatformInfo.info[item.platform] ?? PlatformInfo.info[PlatformEnum.other]!;
     final displayTitle = item.title ?? _extractDomain(item.canonicalUrl);
 
     return GestureDetector(
@@ -108,19 +172,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail placeholder
+            // Thumbnail with CachedNetworkImage
             Expanded(
-              child: Container(
-                width: double.infinity,
-                color: platformInfo.color.withOpacity(0.1),
-                child: Center(
-                  child: Icon(
-                    platformInfo.icon,
-                    size: 40,
-                    color: platformInfo.color.withOpacity(0.5),
-                  ),
-                ),
-              ),
+              child: _buildThumbnail(item, platformInfo),
             ),
             Padding(
               padding: const EdgeInsets.all(8),
@@ -139,11 +193,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(
-                        platformInfo.icon,
-                        size: 12,
-                        color: platformInfo.color,
-                      ),
+                      Icon(platformInfo.icon, size: 12, color: platformInfo.color),
                       const SizedBox(width: 4),
                       Text(
                         platformInfo.displayName,
@@ -164,22 +214,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildListTile(SavedItem item) {
-    final platformInfo = PlatformInfo.info[item.platform] ?? PlatformInfo.info[PlatformEnum.other]!;
+    final platformInfo =
+        PlatformInfo.info[item.platform] ?? PlatformInfo.info[PlatformEnum.other]!;
     final displayTitle = item.title ?? _extractDomain(item.canonicalUrl);
 
     return ListTile(
-      leading: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: platformInfo.color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          platformInfo.icon,
-          color: platformInfo.color,
-        ),
-      ),
+      leading: _buildThumbnailSmall(item, platformInfo),
       title: Text(
         displayTitle,
         maxLines: 2,
@@ -189,38 +229,126 @@ class _LibraryScreenState extends State<LibraryScreen> {
         children: [
           Text(
             platformInfo.displayName,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
           const SizedBox(width: 8),
           Text(
             _formatDate(item.savedAt),
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade400,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade400),
           ),
         ],
       ),
-      trailing: item.isFavorite ? const Icon(Icons.star, size: 16, color: Colors.amber) : null,
+      trailing: item.isFavorite
+          ? const Icon(Icons.star, size: 16, color: Colors.amber)
+          : null,
       onTap: () => _openDetail(item),
     );
   }
 
+  Widget _buildThumbnail(SavedItem item, PlatformInfo platformInfo) {
+    final thumbnail = _getThumbnailLocalPath(item);
+    if (thumbnail != null) {
+      return Image.asset(
+        thumbnail,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildThumbnailPlaceholder(platformInfo),
+      );
+    }
+    return _buildThumbnailPlaceholder(platformInfo);
+  }
+
+  Widget _buildThumbnailSmall(SavedItem item, PlatformInfo platformInfo) {
+    final thumbnail = _getThumbnailLocalPath(item);
+    if (thumbnail != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.asset(
+          thumbnail,
+          width: 48,
+          height: 48,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildThumbnailPlaceholderSmall(platformInfo),
+        ),
+      );
+    }
+    return _buildThumbnailPlaceholderSmall(platformInfo);
+  }
+
+  Widget _buildThumbnailPlaceholder(PlatformInfo platformInfo) {
+    return Container(
+      width: double.infinity,
+      color: platformInfo.color.withOpacity(0.1),
+      child: Center(
+        child: Icon(
+          platformInfo.icon,
+          size: 40,
+          color: platformInfo.color.withOpacity(0.5),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnailPlaceholderSmall(PlatformInfo platformInfo) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: platformInfo.color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(platformInfo.icon, color: platformInfo.color),
+    );
+  }
+
+  String? _getThumbnailLocalPath(SavedItem item) {
+    // Will be populated from thumbnails table in real app
+    // For now, return null (placeholder icons shown)
+    return null;
+  }
+
   void _openDetail(SavedItem item) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ItemDetailScreen(item: item),
+      MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item)),
+    );
+  }
+
+  void _showEditTitleDialog(SavedItem item) {
+    final controller = TextEditingController(text: item.title ?? '');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(AppStrings.editTitleAction),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: AppStrings.editTitleHint,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(AppStrings.editTitleCancel),
+          ),
+          TextButton(
+            onPressed: () async {
+              final title = controller.text.trim();
+              if (title.isNotEmpty) {
+                await widget.db.updateSavedItem(id: item.id, title: title);
+              }
+              if (context.mounted) Navigator.of(context).pop();
+            },
+            child: const Text(AppStrings.editTitleSave),
+          ),
+        ],
       ),
     );
   }
 
   String _extractDomain(String url) {
     try {
-      final uri = Uri.parse(url);
-      return uri.host;
+      return Uri.parse(url).host;
     } catch (_) {
       return url;
     }
