@@ -44,20 +44,15 @@ git push origin main
 3. **Don't wait for build** — just push and tell user to check Actions
 4. **gh_token** — ask user if not in environment
 
-## ⚠️ Lessons Learned (CRITICAL)
+## ⚠️ ALL Lessons Learned (CRITICAL)
 
 ### 1. NEVER gitignore gradle wrapper files
 ```
-# WRONG - will break CI build!
 /android/gradlew
 /android/gradlew.bat
 /android/gradle/
-
-# CORRECT - keep them, only ignore build artifacts
-!/android/gradlew
-!/android/gradlew.bat
-!/android/gradle/
 ```
+**Why:** CI runs `./gradlew assembleDebug` — needs gradlew script + wrapper jar.
 
 ### 2. Gradle + AGP + Flutter version MUST match
 | Component | WRONG | CORRECT |
@@ -69,37 +64,12 @@ git push origin main
 **Error:** `unable to resolve class groovy.xml.QName`
 **Why:** Gradle 9.x removed `groovy.xml.QName` which `flutter.groovy` imports.
 
-### 3. JVM target fix: dùng `plugins.withId`, KHÔNG dùng `afterEvaluate`
-
-```kotlin
-// WRONG - conflicts with evaluationDependsOn
-subprojects {
-    afterEvaluate {
-        // ...
-    }
-}
-
-// CORRECT - plugins.withId runs when plugin is applied
-subprojects {
-    plugins.withId("com.android.application") {
-        extensions.configure<com.android.build.gradle.internal.dsl.BaseAppModuleExtension> {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
-    }
-    plugins.withId("org.jetbrains.kotlin.android") {
-        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            compilerOptions {
-                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-            }
-        }
-    }
-}
+### 3. JVM target mismatch — use `kotlin.jvm.target.validation.mode=warning`
+```properties
+# gradle.properties
+kotlin.jvm.target.validation.mode=warning
 ```
-**Error:** `Cannot run Project.afterEvaluate(Action) when the project is already evaluated.`
-**Why:** Flutter's `build.gradle.kts` uses `evaluationDependsOn(":app")` which forces early evaluation.
+**Why:** `receive_sharing_intent` uses Java 1.8, main app uses Kotlin 17. Cannot override plugin's compileOptions (finalized). Set validation to warning.
 
 ### 4. DON'T use `kotlin { compilerOptions { ... } }` in app/build.gradle.kts
 ```kotlin
@@ -118,16 +88,37 @@ android {
     }
 }
 ```
-**Why:** Kotlin plugin may not be available at evaluation time. `compileOptions` is sufficient.
 
-### 4. database.g.dart must be committed
+### 5. DON'T use `afterEvaluate` with `evaluationDependsOn`
+```kotlin
+// WRONG - "Cannot run Project.afterEvaluate when already evaluated"
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+subprojects {
+    afterEvaluate { ... }
+}
+
+// CORRECT - use plugins.withId (but be careful with extension types)
+subprojects {
+    plugins.withId("com.android.application") {
+        // configure...
+    }
+}
+```
+
+### 6. Build output path may be redirected
+```kotlin
+// In android/build.gradle.kts
+rootProject.layout.buildDirectory.value(newBuildDir)  // Redirects output!
+```
+**APK location:** `build/app/outputs/flutter-apk/app-debug.apk` (NOT `android/app/build/...`)
+
+### 7. database.g.dart must be committed
 Drift generated code must be in repo to prevent first-build failures.
 
-### 5. Don't ignore too aggressive
+### 8. Don't ignore too aggressive
 **KHÔNG BAO GIỜ ignore:** gradlew, gradle/, .g.dart files, pubspec.lock
-
-## ⚡ QUAN TRỌNG: Đọc skill TRƯỚC KHI code
-Bài học Simplenote chỉ có ích nếu được apply khi code. Luôn check skill này trước khi tạo/sửa file Android config.
 
 ## Pre-push Checklist
 ```
@@ -136,5 +127,6 @@ Bài học Simplenote chỉ có ích nếu được apply khi code. Luôn check 
 [ ] Kiem tra AGP version — 8.7.0
 [ ] Kiem tra .gitignore — gradlew NOT ignored
 [ ] Kiem tra database.g.dart — committed
+[ ] Kiem tra gradle.properties — kotlin.jvm.target.validation.mode=warning
 [ ] KHONG co kotlin { compilerOptions } trong app/build.gradle.kts
 ```
