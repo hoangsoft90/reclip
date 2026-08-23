@@ -94,6 +94,9 @@ Drift generated code must be in repo to prevent first-build failures.
 ### 5. Don't ignore too aggressive
 **KHÔNG BAO GIỜ ignore:** gradlew, gradle/, .g.dart files, pubspec.lock
 
+## ⚡ QUAN TRỌNG: Đọc skill TRƯỚC KHI code
+Bài học Simplenote chỉ có ích nếu được apply khi code. Luôn check skill này trước khi tạo/sửa file Android config.
+
 ## Pre-push Checklist
 ```
 [ ] flutter test — all pass
