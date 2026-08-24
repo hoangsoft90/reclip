@@ -126,6 +126,7 @@ class _ReclipAppState extends ConsumerState<ReclipApp>
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Reclip',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorSchemeSeed: Colors.black,
         useMaterial3: true,
