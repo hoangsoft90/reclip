@@ -102,4 +102,5 @@ plugins {
 [ ] app/build.gradle.kts — has Kotlin plugin
 [ ] AndroidManifest.xml — has <queries> for url_launcher
 [ ] gradle.properties — kotlin.jvm.target.validation.mode=warning
+[ ] pubspec.yaml — package_info_plus pinned to ^8.1.3 (9.x crashes Kotlin compiler)
 ```
