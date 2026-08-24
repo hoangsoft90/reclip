@@ -20,10 +20,8 @@ class SavedItems extends Table {
   TextColumn get originalUrl => text()();
   TextColumn get canonicalUrl => text()();
   TextColumn get platform => textEnum<PlatformEnum>()();
-  TextColumn get contentType => textEnum<ContentTypeEnum>()()
-      .withDefault(const Constant('unknown'))();
-  TextColumn get metadataStatus => textEnum<MetadataStatusEnum>()()
-      .withDefault(const Constant('pending'))();
+  TextColumn get contentType => textEnum<ContentTypeEnum>()();
+  TextColumn get metadataStatus => textEnum<MetadataStatusEnum>()();
   TextColumn get title => text().nullable()();
   TextColumn get description => text().nullable()();
   TextColumn get author => text().nullable()();
@@ -34,8 +32,7 @@ class SavedItems extends Table {
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   TextColumn get note => text().nullable()();
   TextColumn get whySaved => text().nullable()();
-  TextColumn get linkStatus => textEnum<LinkStatusEnum>()()
-      .withDefault(const Constant('unknown'))();
+  TextColumn get linkStatus => textEnum<LinkStatusEnum>()();
   IntColumn get lastCheckedAt => integer().nullable()();
 
   @override
@@ -87,8 +84,7 @@ class Thumbnails extends Table {
   TextColumn get itemId => text()();
   TextColumn get remoteUrl => text().nullable()();
   TextColumn get localPath => text().nullable()();
-  TextColumn get downloadStatus => textEnum<DownloadStatusEnum>()()
-      .withDefault(const Constant('pending'))();
+  TextColumn get downloadStatus => textEnum<DownloadStatusEnum>()();
   IntColumn get sizeBytes => integer().nullable()();
   IntColumn get createdAt => integer()();
 
@@ -199,6 +195,9 @@ class AppDatabase extends _$AppDatabase {
         originalUrl: originalUrl,
         canonicalUrl: canonicalUrl,
         platform: platform,
+        contentType: const Value(ContentTypeEnum.unknown),
+        metadataStatus: const Value(MetadataStatusEnum.pending),
+        linkStatus: const Value(LinkStatusEnum.unknown),
         savedAt: now,
       ),
     );
@@ -392,6 +391,7 @@ class AppDatabase extends _$AppDatabase {
         id: id,
         itemId: itemId,
         remoteUrl: Value(remoteUrl),
+        downloadStatus: const Value(DownloadStatusEnum.pending),
         createdAt: now,
       ),
     );
