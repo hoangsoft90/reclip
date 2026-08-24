@@ -207,7 +207,6 @@ class _SpotlightOverlayState extends State<SpotlightOverlay>
       return const SizedBox.shrink();
     }
 
-    final isLast = widget.step == null; // Will be set by parent
     final step = widget.step;
 
     return AnimatedBuilder(

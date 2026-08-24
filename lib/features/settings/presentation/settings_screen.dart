@@ -6,6 +6,7 @@ import 'package:reclip/core/config/app_config.dart';
 import 'package:reclip/core/database/database.dart';
 import 'package:reclip/features/settings/domain/settings_provider.dart';
 import 'package:reclip/features/backup/presentation/backup_settings_screen.dart';
+import 'package:reclip/features/backup/application/backup_export_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   PackageInfo? _packageInfo;
   int _thumbnailCount = 0;
   int _itemCount = 0;
+  int _totalThumbnailBytes = 0;
 
   @override
   void initState() {
@@ -40,6 +42,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       setState(() {
         _thumbnailCount = thumbs.length;
         _itemCount = items.length;
+        _totalThumbnailBytes = totalBytes;
         _packageInfo = info;
       });
     }
@@ -91,7 +94,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ListTile(
               leading: const Icon(Icons.image_outlined),
               title: const Text('Thumbnails cached'),
-              subtitle: Text('$_thumbnailCount images · ${_formatBytes(_thumbnailSize(thumbs: true))}'),
+              subtitle: Text('$_thumbnailCount images · ${_formatBytes(_totalThumbnailBytes)}'),
             ),
 
             ListTile(
@@ -232,7 +235,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  int _thumbnailSize({required bool thumbs}) => 0; // placeholder — loaded async
 
   Future<void> _showResurfaceDialog(AppSettings settings, SettingsNotifier notifier) async {
     final result = await showDialog<ResurfaceFrequency>(
@@ -351,16 +353,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _quickExport() async {
     try {
-      final items = await widget.db.exportSavedItems();
-      final collections = await widget.db.exportCollections();
-      final tags = await widget.db.exportTags();
-      final ic = await widget.db.exportItemCollections();
-      final it = await widget.db.exportItemTags();
-
-      final json = '${items.length} items, ${collections.length} collections, ${tags.length} tags';
+      final exportService = BackupExportService(widget.db);
+      final file = await exportService.export();
+      await exportService.shareBackupFile(file);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ready to export: $json')),
+          const SnackBar(content: Text('Backup exported')),
         );
       }
     } catch (e) {
