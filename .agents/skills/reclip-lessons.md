@@ -699,7 +699,108 @@ Before EVERY commit to main, verify:
 [ ] Share intent: emit SaveResult (not URL), navigate to detail after save
 [ ] IndexedStack: NO autofocus on non-default tabs
 [ ] Share intent cold start: queue pending result if listener not ready
+[ ] Icons: verify icon exists — not all `Icons.xxx_outlined` exist
+[ ] CI/CD: add retry for Maven rate limiting (HTTP 429)
+[ ] await in runZonedGuarded callback: move await BEFORE SentryFlutter.init
 ```
+
+---
+
+## 20. 🚨 Flutter Icons — Not All `Icons.xxx_outlined` Exist
+
+### Error
+```
+lib/features/settings/presentation/settings_screen.dart:194:43:
+  Error: Member not found: 'bug_outlined'.
+```
+
+### Root Cause
+Flutter's `Icons` class does NOT have `Icons.bug_outlined`. Some icon names use different suffixes.
+
+### ❌ WRONG
+```dart
+Icon(Icons.bug_outline)      // ← doesn't exist
+Icon(Icons.bug_outlined)     // ← doesn't exist
+```
+
+### ✅ CORRECT
+```dart
+Icon(Icons.bug_report_outlined)  // ← use full name with "report"
+```
+
+### Rule
+> **Before using an `Icons.xxx_outlined` icon, verify it exists in Flutter's Icons class.** Common mistakes: `bug_outlined` → `bug_report_outlined`, `info_outlined` → `info_outline` (some use `_outline` not `_outlined`).
+
+---
+
+## 21. 🚨 CI/CD — Maven Rate Limiting (HTTP 429)
+
+### Symptom
+Gradle build fails with:
+```
+Could not GET 'https://repo.maven.apache.org/maven2/...kotlin-stdlib-1.9.23.pom'
+Received status code 429 from server: Too Many Requests
+```
+
+### Root Cause
+Maven Central rate-limits CI requests. Gradle daemon fetches many dependencies in parallel.
+
+### ✅ CORRECT — Add retry logic to workflow
+```yaml
+- name: Build debug APK
+  run: |
+    cd android
+    for i in 1 2 3; do
+      ./gradlew assembleDebug && break
+      echo "Attempt $i failed, retrying..."
+      sleep 10
+    done
+```
+
+### Rule
+> **Always add retry logic to Gradle builds in CI.** Maven rate limiting is transient and resolves on retry.
+
+---
+
+## 22. 🚨 Flutter — await in Non-Async runZonedGuarded Callback
+
+### Error
+```
+lib/main.dart:108:21: Error: 'await' can only be used in 'async' or 'async*' methods.
+  final prefs = await SharedPreferences.getInstance();
+```
+
+### Root Cause
+`runZonedGuarded` callback is NOT async. Placing `await` inside it causes a compile error.
+
+### ❌ WRONG
+```dart
+runZonedGuarded(() {
+  final prefs = await SharedPreferences.getInstance(); // ← ERROR
+  runApp(...);
+}, (error, stack) {...});
+```
+
+### ✅ CORRECT — Move await BEFORE SentryFlutter.init
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance(); // ← OK, main() is async
+
+  await SentryFlutter.init(
+    (options) {...},
+    appRunner: () => runZonedGuarded(() {
+      runApp(ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => SettingsNotifier(prefs))],
+        child: const MyApp(),
+      ));
+    }, (error, stack) {...}),
+  );
+}
+```
+
+### Rule
+> **Never use `await` inside `runZonedGuarded` or `runApp` callbacks.** Initialize async resources (SharedPreferences, databases) in `main()` before calling `SentryFlutter.init()`.
 
 ---
 
@@ -725,3 +826,6 @@ Before EVERY commit to main, verify:
 | 2026-08-24 | Share intent saves but doesn't navigate — emit SaveResult + Navigator.push after toast | 🟡 Medium |
 | 2026-08-24 | IndexedStack + autofocus = keyboard on wrong tab — remove autofocus, use manual focus | 🟡 Medium |
 | 2026-08-24 | Share intent cold start: listener not ready when getInitialMedia fires — queue pending result | 🟡 Medium |
+| 2026-08-24 | Icons.bug_outlined doesn't exist — use Icons.bug_report_outlined | 🟡 Medium |
+| 2026-08-24 | Maven rate limiting (HTTP 429) in CI — add retry to Gradle build | 🟡 Medium |
+| 2026-08-24 | await in non-async runZonedGuarded callback — move before SentryFlutter.init | 🟡 Medium |
