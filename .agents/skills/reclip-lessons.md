@@ -482,6 +482,8 @@ Before EVERY commit to main, verify:
 [ ] AdMob callbacks: cast Ad→BannerAd, use rewardedAdLoadCallback
 [ ] Navigator.pop(): only in navigation handlers, not action handlers
 [ ] OverlayEntry.remove(): wrapped in try-catch with .mounted check
+[ ] Detail screens: StatefulWidget with _reloadItem() after every edit
+[ ] DB access outside database class: use public getter methods, not select()
 ```
 
 ---
@@ -503,3 +505,5 @@ Before EVERY commit to main, verify:
 | 2026-08-24 | Batch > pool for concurrency | 🟢 Low |
 | 2026-08-24 | Flutter 3.29.3 for SDK 35 compat | 🟡 Medium |
 | 2026-08-24 | package_info_plus 9.x Kotlin compiler crash — pin ^8.1.3 | 🔴 Critical |
+| 2026-08-24 | StatelessWidget detail screen won't update after DB edits — use StatefulWidget + _reloadItem() | 🟡 Medium |
+| 2026-08-24 | Drift select() is not public from outside database class — add public getSavedItemById() method | 🟡 Medium |
