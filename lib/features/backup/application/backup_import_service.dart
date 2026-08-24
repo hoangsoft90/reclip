@@ -12,7 +12,12 @@ class BackupImportService {
   /// Import backup from a JSON file with checksum verification.
   Future<ImportResult> importFromFile(File file) async {
     final content = await file.readAsString();
-    final wrapped = jsonDecode(content) as Map<String, dynamic>;
+    final Map<String, dynamic> wrapped;
+    try {
+      wrapped = jsonDecode(content) as Map<String, dynamic>;
+    } catch (_) {
+      return ImportResult.failed('Invalid JSON file.');
+    }
 
     final expectedChecksum = wrapped['checksum'] as String;
     final dataJson = jsonEncode(wrapped['data']);
