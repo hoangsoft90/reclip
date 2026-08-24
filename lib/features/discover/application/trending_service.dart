@@ -6,10 +6,10 @@ class TrendingPost {
   final String title;
   final String url;
   final String? thumbnailUrl;
-  final String source; // e.g. "Reddit", "YouTube"
+  final String source;
   final String? author;
-  final int? score; // upvotes, views, etc.
-  final String? subreddit; // Reddit-specific
+  final int? score;
+  final String? subreddit;
 
   const TrendingPost({
     required this.title,
@@ -22,73 +22,68 @@ class TrendingPost {
   });
 }
 
-/// Fetches trending content from various platforms.
-/// Uses public APIs where available (Reddit).
+/// Fetches trending content from platforms with public APIs.
 class TrendingService {
   final http.Client _client;
 
   TrendingService({http.Client? client}) : _client = client ?? http.Client();
 
-  /// Fetch trending posts from Reddit (public JSON API, no auth).
-  Future<List<TrendingPost>> fetchRedditTrending({String subreddit = 'all'}) async {
+  /// Fetch top stories from Hacker News (public Firebase API, no auth).
+  Future<List<TrendingPost>> fetchHackerNewsTrending() async {
     try {
-      final uri = Uri.parse(
-        'https://www.reddit.com/r/$subreddit/hot.json?limit=20&raw_json=1',
-      );
-      final response = await _client.get(
-        uri,
-        headers: {'User-Agent': 'Reclip/1.0 (Android)'},
-      ).timeout(const Duration(seconds: 10));
+      // Get top story IDs
+      final idsResponse = await _client
+          .get(Uri.parse('https://hacker-news.firebaseio.com/v0/topstories.json'))
+          .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode != 200) return [];
+      if (idsResponse.statusCode != 200) return [];
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final children = (data['data']?['children'] as List?) ?? [];
+      final ids = (jsonDecode(idsResponse.body) as List).cast<int>();
+      final topIds = ids.take(20).toList();
 
-      return children
-          .where((c) => c['kind'] == 't3')
-          .map((c) {
-            final post = c['data'] as Map<String, dynamic>;
-            final thumbnail = post['thumbnail'] as String?;
-            final isExternal = post['is_self'] == false;
-
-            return TrendingPost(
-              title: post['title'] ?? '',
-              url: isExternal
-                  ? (post['url'] as String? ?? '')
-                  : 'https://reddit.com${post['permalink'] ?? ''}',
-              thumbnailUrl: thumbnail != null && thumbnail.startsWith('http')
-                  ? thumbnail
-                  : null,
-              source: 'Reddit',
-              author: post['author'],
-              score: post['score'],
-              subreddit: post['subreddit'],
-            );
-          })
-          .where((p) => p.url.isNotEmpty)
-          .toList();
+      // Fetch each story in parallel
+      final futures = topIds.map((id) => _fetchHnStory(id));
+      final results = await Future.wait(futures);
+      return results.whereType<TrendingPost>().toList();
     } catch (e) {
       return [];
     }
   }
 
-  /// Placeholder for YouTube trending (requires API key).
-  Future<List<TrendingPost>> fetchYouTubeTrending() async {
-    // TODO: Integrate YouTube Data API v3 when API key is available
-    return [];
-  }
+  Future<TrendingPost?> _fetchHnStory(int id) async {
+    try {
+      final response = await _client
+          .get(Uri.parse('https://hacker-news.firebaseio.com/v0/item/$id.json'))
+          .timeout(const Duration(seconds: 5));
 
-  /// Placeholder for TikTok trending (no public API).
-  Future<List<TrendingPost>> fetchTikTokTrending() async {
-    // TODO: Integrate when TikTok API is available
-    return [];
+      if (response.statusCode != 200) return null;
+
+      final story = jsonDecode(response.body) as Map<String, dynamic>;
+      final title = story['title'] as String? ?? '';
+      final url = story['url'] as String? ?? '';
+      final by = story['by'] as String?;
+      final score = story['score'] as int?;
+
+      if (title.isEmpty) return null;
+
+      // HN stories without URL link to HN discussion
+      final storyUrl = url.isNotEmpty ? url : 'https://news.ycombinator.com/item?id=$id';
+
+      return TrendingPost(
+        title: title,
+        url: storyUrl,
+        source: 'Hacker News',
+        author: by,
+        score: score,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Fetch trending from all available sources.
   Future<List<TrendingPost>> fetchAllTrending() async {
-    final reddit = await fetchRedditTrending();
-    return reddit; // Add more sources as APIs become available
+    return fetchHackerNewsTrending();
   }
 
   void dispose() {
