@@ -123,7 +123,7 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: _save,
+                  onPressed: _isSaving ? null : _save,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.white,
@@ -131,13 +131,22 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    AppStrings.saveButton,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          AppStrings.saveButton,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -323,37 +332,47 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
 
   // ── Save ──
 
-  void _save() async {
-    // Save note + why
-    await widget.db.updateSavedItem(
-      id: widget.item.id,
-      note: _note?.isEmpty == true ? null : _note,
-      whySaved: _selectedWhySaved,
-    );
+  bool _isSaving = false;
 
-    // Sync collections: remove all then add selected
-    final currentCollections = await widget.db.getCollectionsForItem(widget.item.id);
-    for (final c in currentCollections) {
-      if (!_selectedCollections.any((sc) => sc.id == c.id)) {
-        await widget.db.removeCollectionFromItem(widget.item.id, c.id);
+  Future<void> _save() async {
+    if (_isSaving) return; // prevent double-tap
+    setState(() => _isSaving = true);
+
+    try {
+      // Save note + why
+      await widget.db.updateSavedItem(
+        id: widget.item.id,
+        note: _note?.isEmpty == true ? null : _note,
+        whySaved: _selectedWhySaved,
+      );
+
+      // Sync collections: remove all then add selected
+      final currentCollections = await widget.db.getCollectionsForItem(widget.item.id);
+      for (final c in currentCollections) {
+        if (!_selectedCollections.any((sc) => sc.id == c.id)) {
+          await widget.db.removeCollectionFromItem(widget.item.id, c.id);
+        }
       }
-    }
-    for (final c in _selectedCollections) {
-      await widget.db.addToCollection(widget.item.id, c.id);
-    }
-
-    // Sync tags: remove all then add selected
-    final currentTags = await widget.db.getTagsForItem(widget.item.id);
-    for (final t in currentTags) {
-      if (!_selectedTags.any((st) => st.id == t.id)) {
-        await widget.db.removeTagFromItem(widget.item.id, t.id);
+      for (final c in _selectedCollections) {
+        await widget.db.addToCollection(widget.item.id, c.id);
       }
-    }
-    for (final t in _selectedTags) {
-      await widget.db.addTagToItem(widget.item.id, t.id);
-    }
 
-    if (mounted) Navigator.of(context).pop();
+      // Sync tags: remove all then add selected
+      final currentTags = await widget.db.getTagsForItem(widget.item.id);
+      for (final t in currentTags) {
+        if (!_selectedTags.any((st) => st.id == t.id)) {
+          await widget.db.removeTagFromItem(widget.item.id, t.id);
+        }
+      }
+      for (final t in _selectedTags) {
+        await widget.db.addTagToItem(widget.item.id, t.id);
+      }
+    } catch (e) {
+      debugPrint('[SmartSave] Save error: $e');
+    } finally {
+      // ALWAYS close popup, even if save failed
+      if (mounted) Navigator.of(context).pop();
+    }
   }
 
   // ── Helper ──
