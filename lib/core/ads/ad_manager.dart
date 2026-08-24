@@ -24,6 +24,10 @@ class AdManager {
   /// Initialize the Mobile Ads SDK. Call once at app startup.
   Future<void> initialize() async {
     if (_initialized) return;
+    if (!AppConfig.enableAds) {
+      debugPrint('[AdManager] Ads disabled by config');
+      return;
+    }
 
     final status = await MobileAds.instance.initialize();
     _initialized = true;

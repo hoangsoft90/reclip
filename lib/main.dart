@@ -14,6 +14,7 @@ import 'package:reclip/features/metadata/application/thumbnail_download_service.
 import 'package:reclip/features/onboarding/application/onboarding_manager.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:reclip/core/ads/ad_manager.dart';
+import 'package:reclip/core/config/app_config.dart';
 import 'app.dart';
 
 const _sentryDsn = 'https://2800d4f2840f11d317041a3d24a77194@o4505474077753344.ingest.us.sentry.io/4511963247083520';
@@ -77,8 +78,10 @@ final shareIntentHandlerProvider = Provider<ShareIntentHandler>((ref) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize AdMob
-  await MobileAds.instance.initialize();
+  // Initialize AdMob (only if enabled)
+  if (AppConfig.enableAds) {
+    await MobileAds.instance.initialize();
+  }
 
   // Initialize Sentry
   await SentryFlutter.init(

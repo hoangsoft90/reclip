@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:reclip/core/ads/ad_manager.dart';
+import 'package:reclip/core/config/app_config.dart';
 
 /// Displays a banner ad with proper SafeArea handling.
 ///
@@ -36,7 +37,11 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   @override
   void initState() {
     super.initState();
-    _loadAd();
+    if (AppConfig.enableAds) {
+      _loadAd();
+    } else {
+      _isLoading = false;
+    }
   }
 
   void _loadAd() {
