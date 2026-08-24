@@ -326,6 +326,16 @@ class AppDatabase extends _$AppDatabase {
     return results.map((r) => r.readTable(collections)).toList();
   }
 
+  Future<List<Collection>> getAllCollections() async {
+    return select(collections).get();
+  }
+
+  Future<void> removeCollectionFromItem(String itemId, String collectionId) async {
+    await (delete(itemCollections)
+          ..where((t) => t.itemId.equals(itemId) & t.collectionId.equals(collectionId)))
+        .go();
+  }
+
   // === Tags DAO methods ===
 
   Future<Tag> insertTag({
@@ -376,6 +386,12 @@ class AppDatabase extends _$AppDatabase {
 
   Future<List<Tag>> getAllTags() async {
     return select(tags).get();
+  }
+
+  Future<void> removeTagFromItem(String itemId, String tagId) async {
+    await (delete(itemTags)
+          ..where((t) => t.itemId.equals(itemId) & t.tagId.equals(tagId)))
+        .go();
   }
 
   // === Thumbnails DAO methods ===
@@ -447,6 +463,30 @@ class AppDatabase extends _$AppDatabase {
       variables: [Variable.withString('done')],
     ).getSingle();
     return result.read<int>('total');
+  }
+
+  Future<void> deleteItem(String id) async {
+    // Delete FTS entry
+    await customStatement(
+      "DELETE FROM saved_items_fts WHERE item_id = ?",
+      [id],
+    );
+    // Delete related records
+    await (delete(itemTags)..where((t) => t.itemId.equals(id))).go();
+    await (delete(itemCollections)..where((t) => t.itemId.equals(id))).go();
+    await (delete(thumbnails)..where((t) => t.itemId.equals(id))).go();
+    await (delete(resurfaceHistory)..where((t) => t.itemId.equals(id))).go();
+    await (delete(appEvents)..where((t) => t.itemId.equals(id))).go();
+    // Delete the item itself
+    await (delete(savedItems)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<SavedItem?> getSavedItemById(String id) async {
+    return (select(savedItems)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<List<Thumbnail>> getAllThumbnails() async {
+    return select(thumbnails).get();
   }
 
   Future<List<Thumbnail>> findOldestDoneThumbnails({int limit = 10}) async {
