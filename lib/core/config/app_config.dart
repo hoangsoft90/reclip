@@ -11,12 +11,12 @@ class AppConfig {
   // === Feature Flags ===
 
   /// Master switch for ads. When false, no ads are loaded or shown.
-  static const bool enableAds = false;
+  static const bool enableAds = true;
 
   /// When true, AdMob shows test ads (Google's official test unit IDs).
   /// When false, real ads are shown.
   /// Only effective when [enableAds] is true.
-  static const bool testAds = true;
+  static const bool testAds = false;
 
   // === AdMob App IDs (required for initialization) ===
 
