@@ -327,7 +327,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ],
       ),
     );
-    controller.dispose();
+    // Defer dispose to avoid framework error if TextField still references controller
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
 
     if (confirmed == true) {
       // Delete all data
