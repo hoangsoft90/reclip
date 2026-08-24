@@ -20,10 +20,18 @@ class _FacetFilterBarState extends State<FacetFilterBar> {
   bool _expanded = false;
   List<Collection> _collections = [];
   List<Tag> _tags = [];
+  int _lastItemCount = -1;
 
   @override
   void initState() {
     super.initState();
+    _loadCollectionsAndTags();
+  }
+
+  @override
+  void didUpdateWidget(covariant FacetFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Refresh when parent rebuilds (StreamBuilder fires on item changes)
     _loadCollectionsAndTags();
   }
 

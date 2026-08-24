@@ -320,7 +320,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
           TextButton(
-            onPressed: () => Navigator.pop(context, controller.text == 'DELETE'),
+            onPressed: () {
+              if (controller.text != 'DELETE') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Type DELETE to confirm')),
+                );
+                return;
+              }
+              Navigator.pop(context, true);
+            },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete everything'),
           ),
