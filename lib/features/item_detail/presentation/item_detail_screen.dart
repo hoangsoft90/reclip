@@ -804,6 +804,11 @@ class _CollectionPickerSheetState extends State<_CollectionPickerSheet> {
     super.dispose();
   }
 
+  Future<void> _refreshCollections() async {
+    final all = await widget.db.getAllCollections();
+    if (mounted) setState(() => _collections = all);
+  }
+
   Future<void> _createCollection() async {
     final name = _newCollectionController.text.trim();
     if (name.isEmpty) return;
@@ -814,7 +819,8 @@ class _CollectionPickerSheetState extends State<_CollectionPickerSheet> {
       final collection = await widget.db.insertCollection(id: id, name: name);
       _newCollectionController.clear();
       widget.onSelected(collection);
-      if (mounted) Navigator.pop(context);
+      // Refresh list so newly created collection appears — DON'T close sheet
+      await _refreshCollections();
     } finally {
       if (mounted) setState(() => _isCreating = false);
     }
