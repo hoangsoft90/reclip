@@ -9,6 +9,7 @@ class FacetFilterState {
   final String? whySaved;
   final bool? isFavorite;
   final bool? isArchived;
+  final String searchQuery;
 
   const FacetFilterState({
     this.platforms = const {},
@@ -18,6 +19,7 @@ class FacetFilterState {
     this.whySaved,
     this.isFavorite,
     this.isArchived,
+    this.searchQuery = '',
   });
 
   bool get isEmpty =>
@@ -27,7 +29,22 @@ class FacetFilterState {
       hasNote == null &&
       whySaved == null &&
       isFavorite == null &&
-      isArchived == null;
+      isArchived == null &&
+      searchQuery.isEmpty;
+
+  /// Number of active filters (for badge count)
+  int get activeCount {
+    int count = 0;
+    if (platforms.isNotEmpty) count++;
+    if (contentTypes.isNotEmpty) count++;
+    if (savedDateRange != null) count++;
+    if (hasNote != null) count++;
+    if (whySaved != null) count++;
+    if (isFavorite != null) count++;
+    if (isArchived != null) count++;
+    if (searchQuery.isNotEmpty) count++;
+    return count;
+  }
 
   FacetFilterState copyWith({
     Set<PlatformEnum>? platforms,
@@ -37,6 +54,7 @@ class FacetFilterState {
     String? whySaved,
     bool? isFavorite,
     bool? isArchived,
+    String? searchQuery,
   }) {
     return FacetFilterState(
       platforms: platforms ?? this.platforms,
@@ -46,6 +64,7 @@ class FacetFilterState {
       whySaved: whySaved ?? this.whySaved,
       isFavorite: isFavorite ?? this.isFavorite,
       isArchived: isArchived ?? this.isArchived,
+      searchQuery: searchQuery ?? this.searchQuery,
     );
   }
 }
@@ -53,6 +72,11 @@ class FacetFilterState {
 class FacetFilterController extends ChangeNotifier {
   FacetFilterState _state = const FacetFilterState();
   FacetFilterState get state => _state;
+
+  void setSearchQuery(String value) {
+    _state = _state.copyWith(searchQuery: value);
+    notifyListeners();
+  }
 
   void togglePlatform(PlatformEnum platform) {
     final platforms = Set<PlatformEnum>.from(_state.platforms);
@@ -65,6 +89,13 @@ class FacetFilterController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setPlatform(PlatformEnum? platform) {
+    _state = _state.copyWith(
+      platforms: platform == null ? {} : {platform},
+    );
+    notifyListeners();
+  }
+
   void toggleContentType(ContentTypeEnum type) {
     final types = Set<ContentTypeEnum>.from(_state.contentTypes);
     if (types.contains(type)) {
@@ -73,6 +104,13 @@ class FacetFilterController extends ChangeNotifier {
       types.add(type);
     }
     _state = _state.copyWith(contentTypes: types);
+    notifyListeners();
+  }
+
+  void setContentType(ContentTypeEnum? type) {
+    _state = _state.copyWith(
+      contentTypes: type == null ? {} : {type},
+    );
     notifyListeners();
   }
 
@@ -113,6 +151,21 @@ class FacetFilterController extends ChangeNotifier {
   /// Filter a list of saved items against the current filter state.
   List<SavedItem> applyFilter(List<SavedItem> items) {
     return items.where((item) {
+      // Text search — match title, description, note, originalUrl
+      if (_state.searchQuery.isNotEmpty) {
+        final query = _state.searchQuery.toLowerCase();
+        final title = (item.title ?? '').toLowerCase();
+        final desc = (item.description ?? '').toLowerCase();
+        final note = (item.note ?? '').toLowerCase();
+        final url = item.originalUrl.toLowerCase();
+        if (!title.contains(query) &&
+            !desc.contains(query) &&
+            !note.contains(query) &&
+            !url.contains(query)) {
+          return false;
+        }
+      }
+
       if (_state.platforms.isNotEmpty && !_state.platforms.contains(item.platform)) {
         return false;
       }
