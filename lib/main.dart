@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:reclip/core/database/database.dart';
 import 'package:reclip/core/network/http_client.dart';
 import 'package:reclip/features/share_intent/share_intent_handler.dart';
@@ -10,6 +11,8 @@ import 'package:reclip/features/metadata/metadata_adapter_factory.dart';
 import 'package:reclip/features/metadata/application/enrichment_orchestrator.dart';
 import 'package:reclip/features/metadata/application/thumbnail_download_service.dart';
 import 'app.dart';
+
+const _sentryDsn = 'https://2800d4f2840f11d317041a3d24a77194@o4505474077753344.ingest.us.sentry.io/4511963247083520';
 
 // Database provider
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -55,22 +58,36 @@ final shareIntentHandlerProvider = Provider<ShareIntentHandler>((ref) {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Global error handler — catch Flutter framework errors
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    // Log locally, don't send anywhere yet
-    debugPrint('[FlutterError] ${details.exceptionAsString()}');
-  };
+  // Initialize Sentry
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = _sentryDsn;
+      // Use debug in development, error in production
+      options.tracesSampleRate = 1.0;
+      options.enableAutoSessionTracking = true;
+    },
+    appRunner: () => runZonedGuarded(() {
+      // Global error handler — catch Flutter framework errors
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        // Send to Sentry
+        Sentry.captureException(
+          details.exception,
+          stackTrace: details.stack,
+        );
+        debugPrint('[FlutterError] ${details.exceptionAsString()}');
+      };
 
-  // Catch async errors outside Flutter widget tree
-  runZonedGuarded(() {
-    runApp(
-      const ProviderScope(
-        child: ReclipApp(),
-      ),
-    );
-  }, (error, stack) {
-    debugPrint('[ZoneError] $error');
-    debugPrint('$stack');
-  });
+      runApp(
+        const ProviderScope(
+          child: ReclipApp(),
+        ),
+      );
+    }, (error, stack) {
+      // Catch async errors outside Flutter widget tree
+      Sentry.captureException(error, stackTrace: stack);
+      debugPrint('[ZoneError] $error');
+      debugPrint('$stack');
+    }),
+  );
 }
