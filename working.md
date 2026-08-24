@@ -1,48 +1,37 @@
-# working.md — Current Working State
+# Working — Reclip Project
 
-## Last Updated: August 23, 2026
+## Current State
+- **Last Updated:** 2026-08-24
+- **Phase:** Phase 2 Enrichment — DONE
+- **Next:** Phase 3 (TBD — dựa trên metrics từ Phase 2)
 
-## Current Phase
-**Phase 2 (Enrichment) — COMPLETED ✅**
-
-All Phase 0-2 features are implemented, tested, and building on GitHub Actions.
-
-## What Was Done Today
-1. ✅ Phase 2 Enrichment — 6 metadata adapters, orchestrator, thumbnails, faceted filter
-2. ✅ Smart Save button fix — now saves note + whySaved to DB
-3. ✅ Thumbnail display fix — connected to DB in Library + ItemDetail
-4. ✅ OpenSpec baseline — 20 capability specs matching implemented code
-5. ✅ Knowledge base — `.project/` with 15 documentation files
-6. ✅ Memory files — AGENTS.md, CLAUDE.md, context.md, working.md, operating_rules.md
-
-## Last Git State
+## Current Path
 ```
-Branch: main
-Latest commit: 5f5eb29 (docs: add .project/ knowledge base)
-Remote: https://github.com/hoangsoft90/reclip
+/home/kythuat_hoangweb/htdocs_apps/reclip
 ```
 
-## What's Next (Phase 3)
-Priority order:
-1. **Notes management** — Full CRUD for item notes (currently only via Smart Save)
-2. **Rediscovery Engine** — Simple algorithm: age × last_seen × favorite
-3. **Local Backup/Restore** — Export/import `.reclipzip` file
-4. **Favorite toggle** — Currently `onPressed: () {}`
-5. **Collection CRUD** — Currently placeholder UI
-6. **Tag management** — Currently placeholder UI
+## Phase 2 Done
+- 26 files changed, 1529 insertions
+- 0 errors, 25/25 tests pass
+- GitHub Actions build #33+
 
 ## Known Issues to Fix
-- Smart Save Collection/Tags = placeholder (not saving to DB)
-- FTS5 input not sanitized (special chars can crash)
-- No debounce on search (performance with large library)
-- PlatformEnum.x uses Icons.close instead of X logo
-- Tag ID uses timestamp (potential collision)
+1. ✅ Smart Save button — NOW updates DB (fixed after openspec)
+2. ✅ Thumbnail display — NOW connected to DB (Library + ItemDetail)
+3. Faceted filter date picker — no UI yet (client-side filter only)
+4. TikTok/Instagram metadata — hay fail (expected, Quick Link fallback works)
+5. In-memory MetricsLogger — data lost on restart
 
-## Build Status
-- GitHub Actions: ✅ Working (build #33+ stable)
-- Last successful build: #33 (Phase 2 code)
-- APK artifact: `reclip-debug-apk` (retained 7 days)
+## Phase 3 Decision Pending
+- Chạy app thật ~50 items đa dạng platform
+- Xem MetricsLogger output (success rate per platform)
+- Quyết định: proxy backend vs accept Quick Link fallback
 
-## Test Status
-- 25/25 tests passing
-- Coverage: url_normalizer (8), platform_detector (13), quick_save_service (2), other (2)
+## Recent Commits
+- `ff266b2` — Update AGENTS.md with latest project state
+- `3b9219d` — Connect thumbnail display to DB
+- `7fa445a` — Fix Smart Save button update DB
+- `4716996` — OpenSpec baseline (20 specs)
+- `20048ee` — Phase 2 Enrichment (26 files)
+- `450b30f` — url_launcher <queries> fix
+- `158f318` — Search FTS5 fix (add original_url)

@@ -55,4 +55,19 @@ class AppStrings {
   static const editTitleHint = 'Enter a title for this item';
   static const editTitleSave = 'Save';
   static const editTitleCancel = 'Cancel';
+
+  // Phase 3 - Rediscovery
+  static const resurfaceSectionTitle = '✨ Resurface';
+  static const resurfaceEmptyState =
+      'Save a few more things to see resurfaced items here.';
+
+  // Phase 3 - Backup & Restore
+  static const backupScreenTitle = 'Backup & Restore';
+  static const exportBackupButton = 'Export backup now';
+  static const restoreBackupButton = 'Restore from file';
+  static const restoreMergeNotice =
+      'Restoring merges data — nothing on this device will be deleted.';
+  static const restoreSuccessMessage = 'Restored successfully';
+  static const restoreChecksumError =
+      'This backup file looks corrupted or was edited outside Reclip.';
 }

@@ -4,6 +4,7 @@ import 'package:reclip/core/constants/app_strings.dart';
 import 'package:reclip/core/constants/platforms.dart';
 import 'package:reclip/core/database/database.dart';
 import 'package:reclip/features/item_detail/application/open_original_service.dart';
+import 'package:reclip/features/item_detail/presentation/edit_note_why_sheet.dart';
 import 'package:reclip/features/smart_save/presentation/smart_save_bottom_sheet.dart';
 
 class ItemDetailScreen extends StatelessWidget {
@@ -27,8 +28,12 @@ class ItemDetailScreen extends StatelessWidget {
               item.isFavorite ? Icons.star : Icons.star_border,
               color: item.isFavorite ? Colors.amber : null,
             ),
-            onPressed: () {
-              // TODO: Toggle favorite — Phase 3
+            onPressed: () async {
+              await db.updateSavedItem(
+                id: item.id,
+                isFavorite: !item.isFavorite,
+              );
+              if (context.mounted) Navigator.of(context).pop();
             },
           ),
           IconButton(
@@ -184,35 +189,60 @@ class ItemDetailScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                  // Note
-                  if (item.note != null && item.note!.isNotEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        item.note!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.blue.shade800,
-                          fontStyle: FontStyle.italic,
+                  // Note + Why + Edit button
+                  if (item.note != null && item.note!.isNotEmpty ||
+                      item.whySaved != null)
+                    GestureDetector(
+                      onTap: () => _showEditNoteWhySheet(context),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Spacer(),
+                                Icon(Icons.edit, size: 16, color: Colors.blue.shade600),
+                              ],
+                            ),
+                            if (item.note != null && item.note!.isNotEmpty)
+                              Text(
+                                item.note!,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.blue.shade800,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            if (item.whySaved != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Chip(
+                                  label: Text(
+                                    AppStrings.whySavedOptions[item.whySaved] ?? item.whySaved!,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  backgroundColor: Colors.purple.shade50,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                  // Why saved badge
-                  if (item.whySaved != null)
+                  // Edit note/why button (when empty)
+                  if (item.note == null && item.whySaved == null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
-                      child: Chip(
-                        label: Text(
-                          AppStrings.whySavedOptions[item.whySaved] ?? item.whySaved!,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        backgroundColor: Colors.purple.shade50,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showEditNoteWhySheet(context),
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Add note or why'),
                       ),
                     ),
                   const SizedBox(height: 16),
@@ -325,5 +355,13 @@ class ItemDetailScreen extends StatelessWidget {
     if (diff.inHours > 0) return '${diff.inHours}h ago';
     if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
     return 'just now';
+  }
+
+  void _showEditNoteWhySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => EditNoteWhySheet(item: item, db: db),
+    );
   }
 }

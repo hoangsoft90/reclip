@@ -20,9 +20,9 @@ class SavedItems extends Table {
   TextColumn get originalUrl => text()();
   TextColumn get canonicalUrl => text()();
   TextColumn get platform => textEnum<PlatformEnum>()();
-  TextColumn get contentType => textEnum<ContentTypeEnum>()
+  TextColumn get contentType => textEnum<ContentTypeEnum>()()
       .withDefault(const Constant('unknown'))();
-  TextColumn get metadataStatus => textEnum<MetadataStatusEnum>()
+  TextColumn get metadataStatus => textEnum<MetadataStatusEnum>()()
       .withDefault(const Constant('pending'))();
   TextColumn get title => text().nullable()();
   TextColumn get description => text().nullable()();
@@ -34,7 +34,7 @@ class SavedItems extends Table {
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   TextColumn get note => text().nullable()();
   TextColumn get whySaved => text().nullable()();
-  TextColumn get linkStatus => textEnum<LinkStatusEnum>()
+  TextColumn get linkStatus => textEnum<LinkStatusEnum>()()
       .withDefault(const Constant('unknown'))();
   IntColumn get lastCheckedAt => integer().nullable()();
 
@@ -87,9 +87,32 @@ class Thumbnails extends Table {
   TextColumn get itemId => text()();
   TextColumn get remoteUrl => text().nullable()();
   TextColumn get localPath => text().nullable()();
-  TextColumn get downloadStatus => textEnum<DownloadStatusEnum>()
+  TextColumn get downloadStatus => textEnum<DownloadStatusEnum>()()
       .withDefault(const Constant('pending'))();
   IntColumn get sizeBytes => integer().nullable()();
+  IntColumn get createdAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// Phase 3 tables
+
+class ResurfaceHistory extends Table {
+  TextColumn get id => text()();
+  TextColumn get itemId => text().references(SavedItems, #id, onDelete: KeyAction.cascade)();
+  IntColumn get shownAt => integer()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class AppEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get eventType => text()();
+  TextColumn get itemId => text().nullable()();
+  TextColumn get platform => text().nullable()();
+  TextColumn get metadataStatus => text().nullable()();
   IntColumn get createdAt => integer()();
 
   @override
@@ -105,53 +128,60 @@ class Thumbnails extends Table {
   Tags,
   ItemTags,
   Thumbnails,
+  ResurfaceHistory,
+  AppEvents,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (m) async {
         await m.createAll();
-        // FTS5 virtual table
-        await customStatement('''
-          CREATE VIRTUAL TABLE IF NOT EXISTS saved_items_fts USING fts5(
-            item_id UNINDEXED,
-            original_url,
-            title,
-            description,
-            note,
-            content='',
-            tokenize='unicode61'
-          );
-        ''');
-        // Triggers for FTS5 sync
-        await customStatement('''
-          CREATE TRIGGER IF NOT EXISTS saved_items_ai AFTER INSERT ON saved_items BEGIN
-            INSERT INTO saved_items_fts(item_id, original_url, title, description, note)
-            VALUES (new.id, new.original_url, new.title, new.description, new.note);
-          END;
-        ''');
-        await customStatement('''
-          CREATE TRIGGER IF NOT EXISTS saved_items_au AFTER UPDATE ON saved_items BEGIN
-            UPDATE saved_items_fts SET original_url = new.original_url, title = new.title, description = new.description, note = new.note
-            WHERE item_id = new.id;
-          END;
-        ''');
-        await customStatement('''
-          CREATE TRIGGER IF NOT EXISTS saved_items_ad AFTER DELETE ON saved_items BEGIN
-            DELETE FROM saved_items_fts WHERE item_id = old.id;
-          END;
-        ''');
+        await _createFts5(m);
       },
       onUpgrade: (m, from, to) async {
-        // Reserved for future migrations
+        if (from < 2) {
+          await m.createTable(resurfaceHistory);
+          await m.createTable(appEvents);
+        }
       },
     );
+  }
+
+  Future<void> _createFts5(Migrator m) async {
+    await customStatement('''
+      CREATE VIRTUAL TABLE IF NOT EXISTS saved_items_fts USING fts5(
+        item_id UNINDEXED,
+        original_url,
+        title,
+        description,
+        note,
+        content='',
+        tokenize='unicode61'
+      );
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS saved_items_ai AFTER INSERT ON saved_items BEGIN
+        INSERT INTO saved_items_fts(item_id, original_url, title, description, note)
+        VALUES (new.id, new.original_url, new.title, new.description, new.note);
+      END;
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS saved_items_au AFTER UPDATE ON saved_items BEGIN
+        UPDATE saved_items_fts SET original_url = new.original_url, title = new.title, description = new.description, note = new.note
+        WHERE item_id = new.id;
+      END;
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS saved_items_ad AFTER DELETE ON saved_items BEGIN
+        DELETE FROM saved_items_fts WHERE item_id = old.id;
+      END;
+    ''');
   }
 
   // === SavedItems DAO methods ===
@@ -237,6 +267,19 @@ class AppDatabase extends _$AppDatabase {
     return (select(savedItems)
           ..where((t) => t.metadataStatus.equals(status.name))
           ..orderBy([(t) => OrderingTerm.asc(t.savedAt)]))
+        .get();
+  }
+
+  Future<List<SavedItem>> findActiveItems() async {
+    return (select(savedItems)
+          ..where((t) => t.isArchived.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.savedAt)]))
+        .get();
+  }
+
+  Future<List<SavedItem>> findSavedBefore(DateTime cutoff) async {
+    return (select(savedItems)
+          ..where((t) => t.savedAt.isSmallerOrEqualValue(cutoff.millisecondsSinceEpoch)))
         .get();
   }
 
@@ -332,6 +375,10 @@ class AppDatabase extends _$AppDatabase {
     return results.map((r) => r.readTable(tags)).toList();
   }
 
+  Future<List<Tag>> getAllTags() async {
+    return select(tags).get();
+  }
+
   // === Thumbnails DAO methods ===
 
   Future<void> insertThumbnail({
@@ -357,7 +404,6 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
-  /// Get local thumbnail paths for multiple items. Returns map of itemId → localPath.
   Future<Map<String, String>> getThumbnailPathsForItems(List<String> itemIds) async {
     if (itemIds.isEmpty) return {};
     final results = await (select(thumbnails)
@@ -365,7 +411,6 @@ class AppDatabase extends _$AppDatabase {
         .get();
     final map = <String, String>{};
     for (final row in results) {
-      // Keep first thumbnail per item (if multiple exist, use earliest)
       map.putIfAbsent(row.itemId, () => row.localPath!);
     }
     return map;
@@ -410,6 +455,245 @@ class AppDatabase extends _$AppDatabase {
           ..orderBy([(t) => OrderingTerm.asc(t.createdAt)])
           ..limit(limit))
         .get();
+  }
+
+  // === ResurfaceHistory DAO methods (Phase 3) ===
+
+  Future<void> recordResurfaceShown(String itemId) async {
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    await into(resurfaceHistory).insert(
+      ResurfaceHistoryCompanion.insert(
+        id: id,
+        itemId: itemId,
+        shownAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+  }
+
+  Future<List<String>> findResurfaceShownItemIds({required DateTime since}) async {
+    final results = await (select(resurfaceHistory)
+          ..where((t) => t.shownAt.isBiggerOrEqualValue(since.millisecondsSinceEpoch)))
+        .get();
+    return results.map((r) => r.itemId).toList();
+  }
+
+  Future<int> countResurfaceShownSince(DateTime since) async {
+    final result = await customSelect(
+      'SELECT COUNT(*) as cnt FROM resurface_history WHERE shown_at >= ?',
+      variables: [Variable.withInt(since.millisecondsSinceEpoch)],
+    ).getSingle();
+    return result.read<int>('cnt');
+  }
+
+  // === AppEvents DAO methods (Phase 3) ===
+
+  Future<void> logAppEvent({
+    required String eventType,
+    String? itemId,
+    String? platform,
+    String? metadataStatus,
+  }) async {
+    final id = DateTime.now().millisecondsSinceEpoch.toString() +
+        '_' + eventType.hashCode.toRadixString(16);
+    await into(appEvents).insert(
+      AppEventsCompanion.insert(
+        id: id,
+        eventType: eventType,
+        itemId: Value(itemId),
+        platform: Value(platform),
+        metadataStatus: Value(metadataStatus),
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+  }
+
+  Future<bool> hasOpenEventWithinDays({
+    required String itemId,
+    required int afterSavedAt,
+    required int withinDays,
+  }) async {
+    final afterMs = afterSavedAt;
+    final beforeMs = afterSavedAt + (withinDays * 24 * 60 * 60 * 1000);
+    final result = await customSelect(
+      '''SELECT COUNT(*) as cnt FROM app_events
+         WHERE event_type = 'item_opened' AND item_id = ?
+         AND created_at > ? AND created_at < ?''',
+      variables: [
+        Variable.withString(itemId),
+        Variable.withInt(afterMs),
+        Variable.withInt(beforeMs),
+      ],
+    ).getSingle();
+    return result.read<int>('cnt') > 0;
+  }
+
+  Future<int> countDistinctDaysWithEvent({
+    required String eventType,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final fromMs = from.millisecondsSinceEpoch;
+    final toMs = to.millisecondsSinceEpoch;
+    final result = await customSelect(
+      '''SELECT COUNT(DISTINCT (created_at / 86400000)) as days
+         FROM app_events
+         WHERE event_type = ? AND created_at >= ? AND created_at < ?''',
+      variables: [
+        Variable.withString(eventType),
+        Variable.withInt(fromMs),
+        Variable.withInt(toMs),
+      ],
+    ).getSingle();
+    return result.read<int>('days');
+  }
+
+  // === Backup helper methods (Phase 3) ===
+
+  Future<List<Map<String, dynamic>>> exportSavedItems() async {
+    final items = await select(savedItems).get();
+    return items.map((item) => {
+      'id': item.id,
+      'original_url': item.originalUrl,
+      'canonical_url': item.canonicalUrl,
+      'platform': item.platform.name,
+      'content_type': item.contentType.name,
+      'metadata_status': item.metadataStatus.name,
+      'title': item.title,
+      'description': item.description,
+      'author': item.author,
+      'author_url': item.authorUrl,
+      'saved_at': item.savedAt,
+      'last_accessed_at': item.lastAccessedAt,
+      'is_favorite': item.isFavorite,
+      'is_archived': item.isArchived,
+      'note': item.note,
+      'why_saved': item.whySaved,
+      'link_status': item.linkStatus.name,
+      'last_checked_at': item.lastCheckedAt,
+    }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> exportCollections() async {
+    final items = await select(collections).get();
+    return items.map((item) => {
+      'id': item.id,
+      'name': item.name,
+      'icon': item.icon,
+      'color': item.color,
+      'parent_id': item.parentId,
+      'is_smart': item.isSmart,
+      'created_at': item.createdAt,
+    }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> exportTags() async {
+    final items = await select(tags).get();
+    return items.map((item) => {
+      'id': item.id,
+      'name': item.name,
+      'created_at': item.createdAt,
+    }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> exportItemCollections() async {
+    final items = await select(itemCollections).get();
+    return items.map((item) => {
+      'item_id': item.itemId,
+      'collection_id': item.collectionId,
+      'created_at': item.createdAt,
+    }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> exportItemTags() async {
+    final items = await select(itemTags).get();
+    return items.map((item) => {
+      'item_id': item.itemId,
+      'tag_id': item.tagId,
+      'created_at': item.createdAt,
+    }).toList();
+  }
+
+  Future<int> importSavedItem(Map<String, dynamic> data) async {
+    final platform = PlatformEnum.values.firstWhere(
+      (e) => e.name == data['platform'],
+      orElse: () => PlatformEnum.other,
+    );
+    final contentType = ContentTypeEnum.values.firstWhere(
+      (e) => e.name == data['content_type'],
+      orElse: () => ContentTypeEnum.unknown,
+    );
+    final metadataStatus = MetadataStatusEnum.values.firstWhere(
+      (e) => e.name == data['metadata_status'],
+      orElse: () => MetadataStatusEnum.pending,
+    );
+    final linkStatus = LinkStatusEnum.values.firstWhere(
+      (e) => e.name == data['link_status'],
+      orElse: () => LinkStatusEnum.unknown,
+    );
+    return into(savedItems).insertOnConflictUpdate(
+      SavedItemsCompanion.insert(
+        id: data['id'],
+        originalUrl: data['original_url'],
+        canonicalUrl: data['canonical_url'],
+        platform: platform,
+        contentType: Value(contentType),
+        metadataStatus: Value(metadataStatus),
+        title: Value(data['title']),
+        description: Value(data['description']),
+        author: Value(data['author']),
+        authorUrl: Value(data['author_url']),
+        savedAt: data['saved_at'],
+        lastAccessedAt: Value(data['last_accessed_at']),
+        isFavorite: Value(data['is_favorite'] ?? false),
+        isArchived: Value(data['is_archived'] ?? false),
+        note: Value(data['note']),
+        whySaved: Value(data['why_saved']),
+        linkStatus: Value(linkStatus),
+        lastCheckedAt: Value(data['last_checked_at']),
+      ),
+    );
+  }
+
+  Future<void> importCollection(Map<String, dynamic> data) async {
+    await into(collections).insertOnConflictUpdate(
+      CollectionsCompanion.insert(
+        id: data['id'],
+        name: data['name'],
+        icon: Value(data['icon']),
+        color: Value(data['color']),
+        createdAt: data['created_at'],
+      ),
+    );
+  }
+
+  Future<void> importTag(Map<String, dynamic> data) async {
+    await into(tags).insertOnConflictUpdate(
+      TagsCompanion.insert(
+        id: data['id'],
+        name: data['name'],
+        createdAt: data['created_at'],
+      ),
+    );
+  }
+
+  Future<void> importItemCollection(Map<String, dynamic> data) async {
+    await into(itemCollections).insertOnConflictUpdate(
+      ItemCollectionsCompanion.insert(
+        itemId: data['item_id'],
+        collectionId: data['collection_id'],
+        createdAt: data['created_at'],
+      ),
+    );
+  }
+
+  Future<void> importItemTag(Map<String, dynamic> data) async {
+    await into(itemTags).insertOnConflictUpdate(
+      ItemTagsCompanion.insert(
+        itemId: data['item_id'],
+        tagId: data['tag_id'],
+        createdAt: data['created_at'],
+      ),
+    );
   }
 }
 

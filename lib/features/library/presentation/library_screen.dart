@@ -9,6 +9,7 @@ import 'package:reclip/features/library/presentation/widgets/quick_link_card.dar
 import 'package:reclip/features/library/presentation/widgets/offline_banner.dart';
 import 'package:reclip/features/library/presentation/widgets/facet_filter_bar.dart';
 import 'package:reclip/features/library/application/facet_filter_controller.dart';
+import 'package:reclip/features/rediscovery/presentation/resurface_section.dart';
 
 class LibraryScreen extends StatefulWidget {
   final AppDatabase db;
@@ -59,6 +60,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
         children: [
           // Offline banner
           if (!_isOnline) const OfflineBanner(),
+          // Resurface section
+          ResurfaceSection(
+            db: widget.db,
+            onItemTap: (item) => _openDetail(item),
+          ),
           // Filter bar
           FacetFilterBar(controller: _filterController),
           // Items

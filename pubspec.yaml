@@ -25,6 +25,10 @@ dependencies:
   html: ^0.15.4
   connectivity_plus: ^6.0.5
   flutter_cache_manager: ^3.4.1
+  # Phase 3
+  file_picker: ^8.1.2
+  share_plus: ^10.0.2
+  crypto: ^3.0.5
 
 dev_dependencies:
   flutter_test:
