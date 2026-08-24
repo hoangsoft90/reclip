@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "328055861558",
+    "project_id": "all-my-apps-5d52f",
+    "storage_bucket": "all-my-apps-5d52f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:328055861558:android:0588dbefb1c9f19947c397",
+        "android_client_info": {
+          "package_name": "com.reclip.reclip"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCrEaAkv499BXfj2gExNyhHKXCTVJDTEmE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
