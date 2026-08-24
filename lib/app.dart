@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reclip/core/ads/ad_manager.dart';
 import 'package:reclip/core/config/app_config.dart';
 import 'package:reclip/features/library/presentation/library_screen.dart';
-import 'package:reclip/features/search/presentation/search_screen.dart';
+import 'package:reclip/features/discover/presentation/discover_screen.dart';
 import 'package:reclip/features/quick_save_toast/presentation/quick_save_toast.dart';
 import 'package:reclip/features/item_detail/presentation/item_detail_screen.dart';
 import 'package:reclip/features/share_intent/quick_save_service.dart';
@@ -144,7 +144,7 @@ class _ReclipAppState extends ConsumerState<ReclipApp>
           index: _currentIndex,
           children: [
             LibraryScreen(db: ref.watch(databaseProvider)),
-            SearchScreen(db: ref.watch(databaseProvider)),
+            DiscoverScreen(db: ref.watch(databaseProvider)),
           ],
         ),
         bottomNavigationBar: NavigationBar(
@@ -159,9 +159,9 @@ class _ReclipAppState extends ConsumerState<ReclipApp>
               label: 'Library',
             ),
             NavigationDestination(
-              icon: Icon(Icons.search),
-              selectedIcon: Icon(Icons.search),
-              label: 'Search',
+              icon: Icon(Icons.explore_outlined),
+              selectedIcon: Icon(Icons.explore),
+              label: 'Discover',
             ),
           ],
         ),
