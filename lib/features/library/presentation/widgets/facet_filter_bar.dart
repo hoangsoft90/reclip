@@ -105,7 +105,6 @@ class _FacetFilterBarState extends State<FacetFilterBar> {
                             label: 'Platform',
                             value: state.platforms.isEmpty ? null : state.platforms.first,
                             items: PlatformEnum.values
-                                .where((p) => p != PlatformEnum.other)
                                 .map((p) => DropdownMenuItem(
                                       value: p,
                                       child: Row(
