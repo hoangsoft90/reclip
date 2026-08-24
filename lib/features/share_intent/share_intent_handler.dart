@@ -6,13 +6,17 @@ class ShareIntentHandler {
   final QuickSaveService _quickSaveService;
   StreamSubscription<List<SharedMediaFile>>? _subscription;
 
-  final _onShareController = StreamController<String>.broadcast();
-  Stream<String> get onShare => _onShareController.stream;
+  /// Emits SaveResult after each share intent (URL saved or duplicate)
+  final _onSaveController = StreamController<SaveResult>.broadcast();
+  Stream<SaveResult> get onSave => _onSaveController.stream;
+
+  /// Queued result from cold start (before listener is attached)
+  SaveResult? _pendingResult;
 
   ShareIntentHandler(this._quickSaveService);
 
   void init() {
-    // Listen to sharing media (when app is already running)
+    // Listen to sharing media (when app is already running — warm start)
     _subscription = ReceiveSharingIntent.instance.getMediaStream().listen(
       (List<SharedMediaFile> files) {
         for (final file in files) {
@@ -24,7 +28,7 @@ class ShareIntentHandler {
       },
     );
 
-    // Check if app was opened via share intent
+    // Check if app was opened via share intent (cold start)
     ReceiveSharingIntent.instance.getInitialMedia().then(
       (List<SharedMediaFile> files) {
         for (final file in files) {
@@ -34,13 +38,30 @@ class ShareIntentHandler {
     );
   }
 
+  /// Called by app.dart after setting up the listener.
+  /// If there's a pending cold-start result, emit it now.
+  void emitPendingIfAny() {
+    if (_pendingResult != null) {
+      final result = _pendingResult!;
+      _pendingResult = null;
+      // Use addPostFrameCallback to avoid calling listener during build
+      Future.microtask(() => _onSaveController.add(result));
+    }
+  }
+
   void _handleShare(String rawContent) {
     // Extract URL from shared content
     final url = _extractUrl(rawContent);
     if (url != null) {
-      _onShareController.add(url);
-      // Auto-save immediately
-      _quickSaveService.quickSave(url);
+      // Auto-save and emit result (not just URL)
+      _quickSaveService.quickSave(url).then((result) {
+        if (_onSaveController.hasListener) {
+          _onSaveController.add(result);
+        } else {
+          // Listener not ready yet (cold start) — queue it
+          _pendingResult = result;
+        }
+      });
     }
   }
 
@@ -65,6 +86,6 @@ class ShareIntentHandler {
 
   void dispose() {
     _subscription?.cancel();
-    _onShareController.close();
+    _onSaveController.close();
   }
 }

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reclip/features/library/presentation/library_screen.dart';
 import 'package:reclip/features/search/presentation/search_screen.dart';
 import 'package:reclip/features/quick_save_toast/presentation/quick_save_toast.dart';
+import 'package:reclip/features/item_detail/presentation/item_detail_screen.dart';
+import 'package:reclip/features/share_intent/quick_save_service.dart';
 import 'main.dart';
 
 class ReclipApp extends ConsumerStatefulWidget {
@@ -41,32 +43,37 @@ class _ReclipAppState extends ConsumerState<ReclipApp>
 
   void _setupShareIntentListener() {
     final handler = ref.read(shareIntentHandlerProvider);
-    handler.onShare.listen((url) {
+    handler.onSave.listen((saveResult) {
       if (mounted) {
-        _showQuickSaveToast(url);
+        _onShareSaved(saveResult);
       }
     });
+    // Handle cold start: emit any queued result from getInitialMedia
+    handler.emitPendingIfAny();
   }
 
-  void _showQuickSaveToast(String url) async {
+  void _onShareSaved(SaveResult result) {
+    final item = result.item;
+    if (item == null || !mounted) return;
+
     final db = ref.read(databaseProvider);
-    final canonical = _canonicalizeUrl(url);
-    final item = await (db.select(db.savedItems)
-          ..where((t) => t.canonicalUrl.equals(canonical)))
-        .getSingleOrNull();
-    if (item != null && mounted) {
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final isNew = (now - item.savedAt) < 2000;
-      QuickSaveToastOverlay.show(context, item, isNew, db);
-      // Trigger enrichment after new save
-      if (isNew) _triggerEnrichment();
-    }
-  }
+    final isNew = result.isNew;
 
-  String _canonicalizeUrl(String url) {
-    final uri = Uri.tryParse(url.trim());
-    if (uri == null) return url.trim();
-    return uri.toString();
+    // Show toast briefly, then navigate to item detail
+    QuickSaveToastOverlay.show(context, item, isNew, db);
+
+    // Navigate to item detail after short delay (let toast appear first)
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ItemDetailScreen(item: item, db: db),
+        ),
+      );
+    });
+
+    // Trigger enrichment for new saves
+    if (isNew) _triggerEnrichment();
   }
 
   @override
