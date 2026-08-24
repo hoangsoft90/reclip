@@ -11,17 +11,21 @@ import 'package:reclip/features/library/presentation/widgets/facet_filter_bar.da
 import 'package:reclip/features/library/application/facet_filter_controller.dart';
 import 'package:reclip/features/rediscovery/presentation/resurface_section.dart';
 import 'package:reclip/features/backup/presentation/backup_settings_screen.dart';
+import 'package:reclip/core/ads/banner_ad_widget.dart';
+import 'package:reclip/core/ads/ad_manager.dart';
+import 'package:reclip/main.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LibraryScreen extends StatefulWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   final AppDatabase db;
 
   const LibraryScreen({super.key, required this.db});
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen> {
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   bool _isGridView = true;
   final _filterController = FacetFilterController();
   final _connectivityService = ConnectivityService();
@@ -124,6 +128,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 return _buildList(items);
               },
             ),
+          ),
+          // Banner ad — SafeArea ensures it's not hidden by Android nav bar
+          BannerAdWidget(
+            adManager: ref.watch(adManagerProvider),
           ),
         ],
       ),

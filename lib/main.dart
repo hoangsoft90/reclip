@@ -12,6 +12,8 @@ import 'package:reclip/features/metadata/metadata_adapter_factory.dart';
 import 'package:reclip/features/metadata/application/enrichment_orchestrator.dart';
 import 'package:reclip/features/metadata/application/thumbnail_download_service.dart';
 import 'package:reclip/features/onboarding/application/onboarding_manager.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:reclip/core/ads/ad_manager.dart';
 import 'app.dart';
 
 const _sentryDsn = 'https://2800d4f2840f11d317041a3d24a77194@o4505474077753344.ingest.us.sentry.io/4511963247083520';
@@ -48,6 +50,13 @@ final enrichmentOrchestratorProvider = Provider<EnrichmentOrchestrator>((ref) {
   return EnrichmentOrchestrator(db, factory, thumbnailService);
 });
 
+// AdManager provider
+final adManagerProvider = Provider<AdManager>((ref) {
+  final manager = AdManager();
+  ref.onDispose(() => manager.dispose());
+  return manager;
+});
+
 // OnboardingManager provider
 final onboardingManagerProvider = FutureProvider<OnboardingManager>((ref) async {
   final prefs = await SharedPreferences.getInstance();
@@ -67,6 +76,9 @@ final shareIntentHandlerProvider = Provider<ShareIntentHandler>((ref) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize AdMob
+  await MobileAds.instance.initialize();
 
   // Initialize Sentry
   await SentryFlutter.init(
