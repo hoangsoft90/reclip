@@ -44,14 +44,17 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-          ),
-          child: ListView(
+        return Scaffold(
+          resizeToAvoidBottomInset: true,
+          backgroundColor: Colors.white,
+          body: ListView(
             controller: scrollController,
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
             children: [
               // Handle bar
               Center(
@@ -213,63 +216,17 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
       isScrollControlled: true,
       builder: (context) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.4,
-          minChildSize: 0.2,
-          maxChildSize: 0.7,
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.8,
           expand: false,
           builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Column(
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'Select Collection',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: available.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No more collections to add',
-                              style: TextStyle(color: Colors.grey.shade500),
-                            ),
-                          )
-                        : ListView.builder(
-                            controller: scrollController,
-                            itemCount: available.length,
-                            itemBuilder: (context, index) {
-                              final c = available[index];
-                              return ListTile(
-                                leading: Icon(Icons.folder, color: Colors.grey.shade600),
-                                title: Text(c.name),
-                                onTap: () {
-                                  setState(() => _selectedCollections.add(c));
-                                  Navigator.pop(context);
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
+            return _CollectionPickerSheet(
+              available: available,
+              db: widget.db,
+              onSelected: (collection) {
+                setState(() => _selectedCollections.add(collection));
+              },
             );
           },
         );
@@ -416,6 +373,154 @@ class _SmartSaveBottomSheetState extends State<SmartSaveBottomSheet> {
         const SizedBox(height: 6),
         child,
       ],
+    );
+  }
+}
+
+/// Reusable collection picker sheet with inline create-new functionality.
+class _CollectionPickerSheet extends StatefulWidget {
+  final List<Collection> available;
+  final AppDatabase db;
+  final ValueChanged<Collection> onSelected;
+
+  const _CollectionPickerSheet({
+    required this.available,
+    required this.db,
+    required this.onSelected,
+  });
+
+  @override
+  State<_CollectionPickerSheet> createState() => _CollectionPickerSheetState();
+}
+
+class _CollectionPickerSheetState extends State<_CollectionPickerSheet> {
+  final _newCollectionController = TextEditingController();
+  List<Collection> _collections = [];
+  bool _isCreating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _collections = List.from(widget.available);
+  }
+
+  @override
+  void dispose() {
+    _newCollectionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createCollection() async {
+    final name = _newCollectionController.text.trim();
+    if (name.isEmpty) return;
+
+    setState(() => _isCreating = true);
+    try {
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final collection = await widget.db.insertCollection(id: id, name: name);
+      _newCollectionController.clear();
+      widget.onSelected(collection);
+      if (mounted) Navigator.pop(context);
+    } finally {
+      if (mounted) setState(() => _isCreating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Add to Collection',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Inline create new collection
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newCollectionController,
+                    decoration: InputDecoration(
+                      hintText: 'Create new collection…',
+                      prefixIcon: const Icon(Icons.create_new_folder, size: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) => _createCollection(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _isCreating
+                    ? const SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: Padding(
+                          padding: EdgeInsets.all(8),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        onPressed: _createCollection,
+                        icon: const Icon(Icons.check_circle, color: Colors.green),
+                        tooltip: 'Create',
+                      ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Divider(color: Colors.grey.shade200),
+          // Existing collections list
+          Expanded(
+            child: _collections.isEmpty
+                ? Center(
+                    child: Text(
+                      'No collections yet — create one above',
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _collections.length,
+                    itemBuilder: (context, index) {
+                      final c = _collections[index];
+                      return ListTile(
+                        leading: Icon(Icons.folder, color: Colors.grey.shade600),
+                        title: Text(c.name),
+                        onTap: () {
+                          widget.onSelected(c);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
