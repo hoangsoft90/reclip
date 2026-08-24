@@ -484,6 +484,7 @@ Before EVERY commit to main, verify:
 [ ] OverlayEntry.remove(): wrapped in try-catch with .mounted check
 [ ] Detail screens: StatefulWidget with _reloadItem() after every edit
 [ ] DB access outside database class: use public getter methods, not select()
+[ ] Share intent: emit SaveResult (not URL), navigate to detail after save
 ```
 
 ---
@@ -507,3 +508,4 @@ Before EVERY commit to main, verify:
 | 2026-08-24 | package_info_plus 9.x Kotlin compiler crash — pin ^8.1.3 | 🔴 Critical |
 | 2026-08-24 | StatelessWidget detail screen won't update after DB edits — use StatefulWidget + _reloadItem() | 🟡 Medium |
 | 2026-08-24 | Drift select() is not public from outside database class — add public getSavedItemById() method | 🟡 Medium |
+| 2026-08-24 | Share intent saves but doesn't navigate — emit SaveResult + Navigator.push after toast | 🟡 Medium |
