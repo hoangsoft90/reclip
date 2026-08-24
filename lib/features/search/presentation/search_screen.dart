@@ -46,12 +46,12 @@ class _SearchScreenState extends State<SearchScreen> {
       appBar: AppBar(
         title: TextField(
           controller: _searchController,
-          autofocus: true,
           decoration: const InputDecoration(
             hintText: AppStrings.searchHint,
             border: InputBorder.none,
           ),
           onChanged: _search,
+          onTapOutside: (_) => FocusScope.of(context).unfocus(),
         ),
         actions: [
           if (_searchController.text.isNotEmpty)
