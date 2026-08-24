@@ -83,6 +83,10 @@ lib/
 ## OpenSpec
 20 spec files in `openspec/specs/` — baseline for Phase 0-2.
 
+## Related Skills
+- `reclip-lessons` — **MUST READ** before writing code. All bugs, crashes, and anti-patterns found in this project.
+- `reclip-build` — Build workflow + Gradle/Kotlin lessons learned
+
 ## Conventions
 - Android manifest: `<queries>` required for url_launcher (Android 11+)
 - Android manifest: `network_security_config.xml` + `usesCleartextTraffic=true` for HTTP
