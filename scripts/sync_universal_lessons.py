@@ -483,6 +483,42 @@ void main() async {
   );
 }
 ```
+
+---
+
+## 4. await in Non-Async runZonedGuarded Callback
+
+**Error:** `'await' can only be used in 'async' or 'async*' methods.`
+
+**Root Cause:** `runZonedGuarded` callback is NOT async. Placing `await` inside causes compile error.
+
+**❌ WRONG:**
+```dart
+runZonedGuarded(() {
+  final prefs = await SharedPreferences.getInstance(); // ← ERROR
+  runApp(...);
+}, (error, stack) {...});
+```
+
+**✅ CORRECT — Move await BEFORE SentryFlutter.init:**
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance(); // ← OK, main() is async
+
+  await SentryFlutter.init(
+    (options) {...},
+    appRunner: () => runZonedGuarded(() {
+      runApp(ProviderScope(
+        overrides: [settingsProvider.overrideWith((ref) => SettingsNotifier(prefs))],
+        child: const MyApp(),
+      ));
+    }, (error, stack) {...}),
+  );
+}
+```
+
+**Rule:** Never use `await` inside `runZonedGuarded` or `runApp` callbacks. Initialize async resources in `main()` before `SentryFlutter.init()`.
 """
 
 LESSON_5_DEPENDENCIES_CICD = """# Flutter Dependencies & CI/CD Pitfalls
@@ -579,6 +615,32 @@ for (var i = 0; i < items.length; i += maxConcurrent) {
 
 ---
 
+## 5. Maven Rate Limiting (HTTP 429) in CI
+
+**Symptom:** Gradle build fails with:
+```
+Could not GET '...kotlin-stdlib-1.9.23.pom'
+Received status code 429 from server: Too Many Requests
+```
+
+**Root Cause:** Maven Central rate-limits CI requests when Gradle fetches many dependencies in parallel.
+
+**✅ CORRECT — Add retry to workflow:**
+```yaml
+- name: Build debug APK
+  run: |
+    cd android
+    for i in 1 2 3; do
+      ./gradlew assembleDebug && break
+      echo "Attempt $i failed, retrying..."
+      sleep 10
+    done
+```
+
+**Rule:** Always add retry logic to Gradle builds in CI. Maven rate limiting is transient.
+
+---
+
 ## Pre-push Checklist:
 ```
 [ ] Gradle version — 8.9 (not 9.x)
@@ -586,6 +648,7 @@ for (var i = 0; i < items.length; i += maxConcurrent) {
 [ ] app/build.gradle.kts — has Kotlin plugin explicitly
 [ ] package_info_plus — pinned to ^8.1.3 if present
 [ ] Flutter version — 3.29.3+ for SDK 35 compat
+[ ] CI build: retry logic for Maven rate limiting
 ```
 """
 
@@ -593,6 +656,59 @@ for (var i = 0; i < items.length; i += maxConcurrent) {
 # ═══════════════════════════════════════════════════════════════
 # SYNC LOGIC
 # ═══════════════════════════════════════════════════════════════
+
+LESSON_6_FLUTTER_ICONS = """# Flutter Icons — Common Naming Pitfalls
+
+> Universal lessons for ANY Flutter project.
+> Tags: #flutter #icons #ui #reclip
+
+---
+
+## 1. Not All `Icons.xxx_outlined` Exist
+
+**Error:** `Member not found: 'bug_outlined'`
+
+**Root Cause:** Flutter's `Icons` class does NOT have all `Icons.xxx_outlined` variants. Some use different suffixes or names.
+
+**❌ WRONG:**
+```dart
+Icon(Icons.bug_outline)      // ← doesn't exist
+Icon(Icons.bug_outlined)     // ← doesn't exist
+```
+
+**✅ CORRECT:**
+```dart
+Icon(Icons.bug_report_outlined)  // ← use full name with "report"
+```
+
+**Common Mistakes:**
+| Wrong | Correct |
+|-------|---------|
+| `Icons.bug_outlined` | `Icons.bug_report_outlined` |
+| `Icons.info_outlined` | `Icons.info_outline` (note: `_outline` not `_outlined`) |
+| `Icons.help_outlined` | `Icons.help_outline` |
+| `Icons.star_outlined` | `Icons.star_outline` |
+
+**Rule:** Before using `Icons.xxx_outlined`, verify it exists. Some icons use `_outline` (no d) not `_outlined`.
+
+---
+
+## 2. Deprecated Color.withOpacity()
+
+**Warning (not error):** `The method 'withOpacity' is deprecated.`
+
+**✅ CORRECT (Flutter 3.27+):**
+```dart
+// Old (deprecated)
+color.withOpacity(0.5)
+
+// New
+color.withValues(alpha: 0.5)
+```
+
+**Rule:** Use `Color.withValues()` instead of `Color.withOpacity()` in Flutter 3.27+.
+"""
+
 
 NOTES = [
     {
@@ -624,6 +740,12 @@ NOTES = [
         "search_query": "Flutter Dependencies CI/CD Pitfalls",
         "content": LESSON_5_DEPENDENCIES_CICD,
         "tags": ["flutter", "cicd", "dependencies", "kotlin", "android", "lessons-learned", "reclip"],
+    },
+    {
+        "title": "Flutter Icons — Common Naming Pitfalls",
+        "search_query": "Flutter Icons Common Naming Pitfalls",
+        "content": LESSON_6_FLUTTER_ICONS,
+        "tags": ["flutter", "icons", "ui", "lessons-learned", "reclip"],
     },
 ]
 
