@@ -191,13 +191,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const Divider(),
               _sectionHeader('Developer'),
               ListTile(
-                leading: const Icon(Icons.bug_report_outlined),
-                title: const Text('Test interstitial ad'),
-                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Interstitial ad loaded — check logcat')),
-                ),
-              ),
-              ListTile(
                 leading: const Icon(Icons.storage_outlined),
                 title: const Text('DB stats'),
                 subtitle: Text('$_itemCount items, $_thumbnailCount thumbnails'),
