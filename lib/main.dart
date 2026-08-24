@@ -84,6 +84,9 @@ void main() async {
     await MobileAds.instance.initialize();
   }
 
+  // Initialize SharedPreferences for settings (before Sentry, needs await)
+  final prefs = await SharedPreferences.getInstance();
+
   // Initialize Sentry
   await SentryFlutter.init(
     (options) {
@@ -103,9 +106,6 @@ void main() async {
         );
         debugPrint('[FlutterError] ${details.exceptionAsString()}');
       };
-
-      // Initialize SharedPreferences for settings
-      final prefs = await SharedPreferences.getInstance();
 
       runApp(
         ProviderScope(
