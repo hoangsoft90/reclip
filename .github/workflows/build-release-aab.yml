@@ -1,0 +1,103 @@
+name: Build Release AAB
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.gitignore'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      KEYSTORE_PASSWORD: "83793900"
+      KEY_ALIAS: "reclip"
+      KEY_PASSWORD: "83793900"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.3'
+          channel: 'stable'
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run code generation (drift)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Decode release keystore
+        run: |
+          echo "Decoding keystore..."
+          echo "$KEYSTORE_B64" | base64 -d > /tmp/release.keystore
+          chmod 600 /tmp/release.keystore
+          echo "KEYSTORE_FILE=/tmp/release.keystore" >> $GITHUB_ENV
+          keytool -list -keystore /tmp/release.keystore -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" 2>&1 | head -5
+        env:
+          KEYSTORE_B64: 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
+
+      - name: Build release AAB (signed)
+        run: |
+          cd android
+          for i in 1 2 3; do
+            ./gradlew bundleRelease && break
+            echo "Attempt $i failed, retrying..."
+            sleep 10
+          done
+
+      - name: Find AAB file
+        run: |
+          echo "Searching for AAB files..."
+          find . -name "*.aab" -type f 2>/dev/null
+          ls -la build/app/outputs/bundle/release/ 2>/dev/null || echo "release bundle dir not found"
+
+      - name: Verify AAB signing
+        run: |
+          AAB_FILE=$(find build -name "*.aab" -type f | head -1)
+          if [ -n "$AAB_FILE" ]; then
+            echo "AAB found: $AAB_FILE"
+            echo "Size: $(du -h "$AAB_FILE" | cut -f1)"
+          else
+            echo "No AAB file found"
+            exit 1
+          fi
+
+      - name: Upload release AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reclip-release-aab
+          path: build/app/outputs/bundle/release/*.aab
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Build summary
+        run: |
+          AAB_FILE=$(find build -name "*.aab" -type f | head -1)
+          echo "## Release AAB Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**AAB artifact:** reclip-release-aab" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$AAB_FILE" ]; then
+            echo "**Size:** $(du -h "$AAB_FILE" | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Signing Info" >> $GITHUB_STEP_SUMMARY
+          echo "- Alias: reclip" >> $GITHUB_STEP_SUMMARY
+          echo "- Algorithm: RSA 2048-bit" >> $GITHUB_STEP_SUMMARY
+          echo "- Validity: 25 years" >> $GITHUB_STEP_SUMMARY
