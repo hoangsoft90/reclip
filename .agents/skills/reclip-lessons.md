@@ -439,6 +439,35 @@ android {
 
 ---
 
+## 14. 🚨 package_info_plus 9.x Kotlin Compiler Crash
+
+### Error
+```
+package_info_plus-9.0.1/android/src/main/kotlin/.../PackageInfoPlugin.kt:20:5:
+  java.lang.IllegalArgumentException: source must not be null
+```
+→ Task :package_info_plus:compileDebugKotlin FAILED
+
+### Root Cause
+`package_info_plus 9.0.1` has an internal Kotlin compiler bug with Kotlin 2.0.x. This is a transitive dependency (e.g., pulled by `google_mobile_ads` or `connectivity_plus`).
+
+### ❌ WRONG
+```yaml
+# pubspec.yaml — no explicit package_info_plus, resolves to 9.0.1
+# No error locally, but CI Kotlin compiler crashes
+```
+
+### ✅ CORRECT
+```yaml
+# pubspec.yaml — pin to 8.x
+package_info_plus: ^8.1.3
+```
+
+### Rule
+> **After adding any new dependency, check if it brings in `package_info_plus`. If CI shows Kotlin compiler crash on package_info_plus, pin to `^8.1.3`.**
+
+---
+
 ## Quick Reference Checklist
 
 Before EVERY commit to main, verify:
@@ -473,3 +502,4 @@ Before EVERY commit to main, verify:
 | 2026-08-24 | Don't pop on toggle actions | 🟡 Medium |
 | 2026-08-24 | Batch > pool for concurrency | 🟢 Low |
 | 2026-08-24 | Flutter 3.29.3 for SDK 35 compat | 🟡 Medium |
+| 2026-08-24 | package_info_plus 9.x Kotlin compiler crash — pin ^8.1.3 | 🔴 Critical |
