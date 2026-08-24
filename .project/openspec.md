@@ -1,81 +1,81 @@
-# OpenSpec — Tiến độ, Bug, Todo
+# OpenSpec — Progress, Bugs, Todo
 
-## Trạng thái hiện tại
+## Current Status
 
-### ✅ Đã hoàn thành
-| Capability | Spec | Code | Tests |
+### ✅ Completed (23 specs)
+| Capability | Spec | Code | Notes |
 |-----------|------|------|-------|
-| url-normalization | ✅ | ✅ | ✅ 8 tests |
-| platform-detection | ✅ | ✅ | ✅ 13 tests |
-| local-database | ✅ | ✅ | ✅ (thru quick-save) |
-| share-intent | ✅ | ✅ | - |
-| quick-save | ✅ | ✅ | ✅ 2 tests |
-| library | ✅ | ✅ | - |
-| faceted-filter | ✅ | ✅ | - |
-| offline-banner | ✅ | ✅ | - |
-| search | ✅ | ✅ | - |
-| item-detail | ✅ | ✅ | - |
-| open-original | ✅ | ✅ | - |
-| smart-save | ✅ | ✅ (fixed) | - |
-| quick-save-toast | ✅ | ✅ | - |
-| metadata-adapters | ✅ | ✅ | - |
-| enrichment-orchestrator | ✅ | ✅ | - |
-| thumbnail-download | ✅ | ✅ | - |
-| metrics-logger | ✅ | ✅ | - |
-| app-shell | ✅ | ✅ | - |
-| ui-constants | ✅ | ✅ | - |
-| http-client | ✅ | ✅ | - |
+| url-normalization | ✅ | ✅ | |
+| platform-detection | ✅ | ✅ | |
+| local-database | ✅ | ✅ | Drift + FTS5 |
+| share-intent | ✅ | ✅ | Cold start fix |
+| quick-save | ✅ | ✅ | |
+| library | ✅ | ✅ | Grid/list + filter |
+| faceted-filter | ✅ | ✅ | **Updated:** search + dropdowns + collection/tag |
+| offline-banner | ✅ | ✅ | |
+| search | ✅ | ✅ | FTS5 |
+| item-detail | ✅ | ✅ | **Updated:** merged edit, tappable thumb, open link top |
+| open-original | ✅ | ✅ | url_launcher |
+| smart-save | ✅ | ✅ | **Updated:** collection picker, keyboard fix |
+| quick-save-toast | ✅ | ✅ | Navigate to detail |
+| metadata-adapters | ✅ | ✅ | |
+| enrichment-orchestrator | ✅ | ✅ | Batch processing |
+| thumbnail-download | ✅ | ✅ | Local + remote |
+| metrics-logger | ✅ | ✅ | In-memory |
+| app-shell | ✅ | ✅ | Bottom nav, share intent listener |
+| ui-constants | ✅ | ✅ | |
+| http-client | ✅ | ✅ | Dio + retry |
+| settings | ✅ | ✅ | **NEW:** Full settings screen |
+| discover | ✅ | ✅ | **NEW:** Hacker News trending |
+| ads | ✅ | ✅ | **NEW:** AdMob banner + interstitial |
 
-### ⏳ Đang làm / Chưa làm (Phase 3)
-- [ ] Notes management (full CRUD)
+### ⏳ In Progress / Pending
 - [ ] Rediscovery Engine (age × last_seen × favorite)
-- [ ] Local Backup/Restore (`.reclipzip`)
-- [ ] Favorite toggle
-- [ ] Collection CRUD (hiện là placeholder)
-- [ ] Tag management (hiện là placeholder)
 - [ ] Deep link schemes (`instagram://`, `tiktok://`)
+- [ ] Push notifications
+- [ ] iOS support
 
-### 🔜 Backlog (Phase 4+)
+### 🔜 Backlog
 - [ ] Screenshot-to-Clip + OCR
 - [ ] Smart Collections (rule-based)
-- [ ] Import hàng loạt
+- [ ] Batch import
 - [ ] Cloud backup/sync
 - [ ] Export Collection
 - [ ] Moodboard
 - [ ] Semantic search
-- [ ] i18n (tiếng Việt)
+- [ ] i18n
 
 ## Known Bugs
-
 | # | Bug | Severity | Status |
 |---|-----|----------|--------|
-| 1 | Smart Save Collection/Tags là placeholder, chưa lưu DB | Medium | Known |
-| 2 | FTS5 input chưa sanitize (special chars gây lỗi) | Low | Known |
-| 3 | Search không debounce (performance với library lớn) | Low | Known |
-| 4 | `PlatformEnum.x` dùng `Icons.close` thay vì logo X | Low | Known |
-| 5 | 2 badges (Online + Video) cùng hiện cho video items | Low | Known |
-| 6 | Tag ID dùng timestamp (có thể trùng millisecond) | Low | Known |
-| 7 | Thumbnail download stuck ở downloading nếu app kill | Low | Known |
-| 8 | `_matchesAny` match subdomain quá rộng (`evil.reddit.com.attacker.com`) | Low | Known |
+| 1 | FTS5 input not sanitized (special chars) | Low | Known |
+| 2 | Search no debounce (perf with large library) | Low | Known |
+| 3 | `PlatformEnum.x` uses `Icons.close` not X logo | Low | Known |
+| 4 | Tag ID uses timestamp (millisecond collision risk) | Low | Known |
+| 5 | Thumbnail download stuck if app killed | Low | Known |
+| 6 | `_matchesAny` matches subdomain too broadly | Low | Known |
+
+## Features Done This Session
+| Feature | Files Changed |
+|---------|--------------|
+| Settings screen | `settings_screen.dart`, `settings_provider.dart`, `main.dart`, `library_screen.dart` |
+| Discover (HN trending) | `discover_screen.dart`, `trending_service.dart`, `app.dart` |
+| Filter redesign | `facet_filter_bar.dart`, `facet_filter_controller.dart`, `library_screen.dart` |
+| Detail screen redesign | `item_detail_screen.dart` (merged edit, tappable thumb, open link top) |
+| Collection picker fix | `smart_save_bottom_sheet.dart`, `item_detail_screen.dart` |
+| AdMob integration | `ad_manager.dart`, `banner_ad_widget.dart`, `app_config.dart`, `app.dart` |
+| Interstitial ads | `app.dart` (every 5 saves) |
+| Release AAB workflow | `build-release-aab.yml`, `build.gradle.kts` |
+| Debug banner removed | `app.dart` (debugShowCheckedModeBanner: false) |
+| OpenSpec updated | 3 new specs, 3 updated specs |
 
 ## Build History
-
 | Run | Status | Notes |
 |-----|--------|-------|
-| #1-#22 | ❌ Fail | Gradle/Kotlin/AGP version issues |
+| #1-#22 | ❌ Fail | Gradle/Kotlin/AGP issues |
 | #23 | ✅ Success | First successful build |
-| #24-#32 | ✅ Success | Stable |
-| #33+ | ✅ Success | Phase 2 code |
-
-## Commit History (gần nhất)
-
-| Commit | Message |
-|--------|---------|
-| `3b9219d` | docs: update library + item-detail specs for thumbnail fix |
-| `6fd9395` | fix: connect thumbnail display with DB |
-| `e39379b` | docs: update smart-save spec |
-| `4844543` | fix: Smart Save button now saves note + whySaved to DB |
-| `4716996` | docs: add OpenSpec baseline — 20 capability specs |
-| `2f8b4ea` | feat: Phase 2 Enrichment |
-| `158f318` | fix: FTS5 search with original_url |
-| `450b30f` | fix: url_launcher queries for Android 11+ |
+| #24-#93 | ✅ Success | Stable |
+| #94-#95 | ❌ Cancelled | Replaced by newer push |
+| #96 | ✅ Success | Debug APK |
+| #2 (Release) | ✅ Success | Release AAB signed |
+| #4 (Release) | ✅ Success | Real ads enabled |
