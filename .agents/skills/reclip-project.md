@@ -18,6 +18,7 @@ description: Reclip mobile app project context — architecture, conventions, bu
 - Riverpod for state management
 - Dio for HTTP
 - flutter_cache_manager for thumbnail caching
+- Sentry for crash monitoring (sentry_flutter ^8.9.0)
 
 ## Architecture
 - **Pattern:** Feature-first, simple Provider-based DI
@@ -84,7 +85,9 @@ lib/
 
 ## Conventions
 - Android manifest: `<queries>` required for url_launcher (Android 11+)
+- Android manifest: `network_security_config.xml` + `usesCleartextTraffic=true` for HTTP
 - No local APK builds — only GitHub Actions
 - `flutter_cache_manager` for thumbnail caching (200MB LRU)
 - Drift database with FTS5 for search
 - Share Intent receives text only (no images)
+- Sentry DSN in `lib/main.dart` — do NOT commit DSN to public repos if repo is public
