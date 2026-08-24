@@ -10,6 +10,7 @@ import 'package:reclip/features/library/presentation/widgets/offline_banner.dart
 import 'package:reclip/features/library/presentation/widgets/facet_filter_bar.dart';
 import 'package:reclip/features/library/application/facet_filter_controller.dart';
 import 'package:reclip/features/rediscovery/presentation/resurface_section.dart';
+import 'package:reclip/features/backup/presentation/backup_settings_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   final AppDatabase db;
@@ -53,6 +54,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
           IconButton(
             icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
             onPressed: () => setState(() => _isGridView = !_isGridView),
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'backup') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => BackupSettingsScreen(db: widget.db),
+                  ),
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'backup',
+                child: ListTile(
+                  leading: Icon(Icons.backup),
+                  title: Text('Backup & Restore'),
+                  dense: true,
+                ),
+              ),
+            ],
           ),
         ],
       ),

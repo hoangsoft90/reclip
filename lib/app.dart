@@ -84,7 +84,15 @@ class _ReclipAppState extends ConsumerState<ReclipApp>
         useMaterial3: true,
         brightness: Brightness.light,
       ),
-      home: Scaffold(
+      home: PopScope(
+        canPop: _currentIndex == 0, // Only allow exit from Library tab
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop && _currentIndex != 0) {
+            // Switch to Library tab instead of exiting
+            setState(() => _currentIndex = 0);
+          }
+        },
+        child: Scaffold(
         body: IndexedStack(
           index: _currentIndex,
           children: [
@@ -111,6 +119,7 @@ class _ReclipAppState extends ConsumerState<ReclipApp>
           ],
         ),
       ),
+    ),
     );
   }
 }

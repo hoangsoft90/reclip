@@ -30,7 +30,9 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
       appBar: AppBar(
         title: const Text(AppStrings.backupScreenTitle),
       ),
@@ -115,7 +117,8 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Future<void> _exportBackup() async {

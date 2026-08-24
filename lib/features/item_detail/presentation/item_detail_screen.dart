@@ -19,7 +19,15 @@ class ItemDetailScreen extends StatelessWidget {
         PlatformInfo.info[item.platform] ?? PlatformInfo.info[PlatformEnum.other]!;
     final displayTitle = item.title ?? _extractDomain(item.canonicalUrl);
 
-    return Scaffold(
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        // Touch lastAccessed when leaving detail screen
+        if (didPop) {
+          db.touchLastAccessed(item.id);
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(platformInfo.displayName),
         actions: [
@@ -301,7 +309,8 @@ class ItemDetailScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildThumbnailPlaceholder(PlatformInfo platformInfo) {
