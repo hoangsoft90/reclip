@@ -7,8 +7,9 @@ import '../../application/facet_filter_controller.dart';
 /// Compact filter bar with search field, dropdown selects, and toggle buttons.
 class FacetFilterBar extends StatefulWidget {
   final FacetFilterController controller;
+  final AppDatabase db;
 
-  const FacetFilterBar({super.key, required this.controller});
+  const FacetFilterBar({super.key, required this.controller, required this.db});
 
   @override
   State<FacetFilterBar> createState() => _FacetFilterBarState();
@@ -17,6 +18,25 @@ class FacetFilterBar extends StatefulWidget {
 class _FacetFilterBarState extends State<FacetFilterBar> {
   final _searchController = TextEditingController();
   bool _expanded = false;
+  List<Collection> _collections = [];
+  List<Tag> _tags = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCollectionsAndTags();
+  }
+
+  Future<void> _loadCollectionsAndTags() async {
+    final collections = await widget.db.getAllCollections();
+    final tags = await widget.db.getAllTags();
+    if (mounted) {
+      setState(() {
+        _collections = collections;
+        _tags = tags;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -166,6 +186,55 @@ class _FacetFilterBarState extends State<FacetFilterBar> {
                       onChanged: (value) => widget.controller.setWhySaved(value),
                     ),
                     const SizedBox(height: 8),
+                    // Collection + Tag dropdowns
+                    Row(
+                      children: [
+                        // Collection dropdown
+                        Expanded(
+                          child: _buildDropdown<String>(
+                            label: 'Collection',
+                            value: state.collectionId,
+                            items: _collections
+                                .map((c) => DropdownMenuItem(
+                                      value: c.id,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.folder, size: 16),
+                                          const SizedBox(width: 6),
+                                          Text(c.name, style: const TextStyle(fontSize: 13)),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (value) => widget.controller.setCollection(value),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Tag dropdown
+                        Expanded(
+                          child: _buildDropdown<String>(
+                            label: 'Tag',
+                            value: state.tagId,
+                            items: _tags
+                                .map((t) => DropdownMenuItem(
+                                      value: t.id,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.tag, size: 16),
+                                          const SizedBox(width: 6),
+                                          Text(t.name, style: const TextStyle(fontSize: 13)),
+                                        ],
+                                      ),
+                                    ))
+                                .toList(),
+                            onChanged: (value) => widget.controller.setTag(value),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     // Toggle buttons row
                     Row(
                       children: [
@@ -265,6 +334,24 @@ class _FacetFilterBarState extends State<FacetFilterBar> {
                         icon: Icons.bookmark,
                         label: AppStrings.whySavedOptions[state.whySaved] ?? state.whySaved!,
                         onRemove: () => widget.controller.setWhySaved(null),
+                      ),
+                    if (state.collectionId != null)
+                      _buildActiveChip(
+                        icon: Icons.folder,
+                        label: _collections.firstWhere(
+                          (c) => c.id == state.collectionId,
+                          orElse: () => Collection(id: '', name: 'Unknown', createdAt: 0),
+                        ).name,
+                        onRemove: () => widget.controller.setCollection(null),
+                      ),
+                    if (state.tagId != null)
+                      _buildActiveChip(
+                        icon: Icons.tag,
+                        label: _tags.firstWhere(
+                          (t) => t.id == state.tagId,
+                          orElse: () => Tag(id: '', name: 'Unknown', createdAt: 0),
+                        ).name,
+                        onRemove: () => widget.controller.setTag(null),
                       ),
                     _buildActiveChip(
                       icon: Icons.close,

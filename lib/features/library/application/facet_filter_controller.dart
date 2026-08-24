@@ -10,6 +10,8 @@ class FacetFilterState {
   final bool? isFavorite;
   final bool? isArchived;
   final String searchQuery;
+  final String? collectionId;
+  final String? tagId;
 
   const FacetFilterState({
     this.platforms = const {},
@@ -20,6 +22,8 @@ class FacetFilterState {
     this.isFavorite,
     this.isArchived,
     this.searchQuery = '',
+    this.collectionId,
+    this.tagId,
   });
 
   bool get isEmpty =>
@@ -30,9 +34,10 @@ class FacetFilterState {
       whySaved == null &&
       isFavorite == null &&
       isArchived == null &&
-      searchQuery.isEmpty;
+      searchQuery.isEmpty &&
+      collectionId == null &&
+      tagId == null;
 
-  /// Number of active filters (for badge count)
   int get activeCount {
     int count = 0;
     if (platforms.isNotEmpty) count++;
@@ -43,6 +48,8 @@ class FacetFilterState {
     if (isFavorite != null) count++;
     if (isArchived != null) count++;
     if (searchQuery.isNotEmpty) count++;
+    if (collectionId != null) count++;
+    if (tagId != null) count++;
     return count;
   }
 
@@ -55,6 +62,8 @@ class FacetFilterState {
     bool? isFavorite,
     bool? isArchived,
     String? searchQuery,
+    String? collectionId,
+    String? tagId,
   }) {
     return FacetFilterState(
       platforms: platforms ?? this.platforms,
@@ -65,57 +74,35 @@ class FacetFilterState {
       isFavorite: isFavorite ?? this.isFavorite,
       isArchived: isArchived ?? this.isArchived,
       searchQuery: searchQuery ?? this.searchQuery,
+      collectionId: collectionId ?? this.collectionId,
+      tagId: tagId ?? this.tagId,
     );
   }
 }
 
 class FacetFilterController extends ChangeNotifier {
+  final AppDatabase _db;
   FacetFilterState _state = const FacetFilterState();
   FacetFilterState get state => _state;
+
+  // Cached item IDs for collection/tag filters
+  Set<String> _collectionItemIds = {};
+  Set<String> _tagItemIds = {};
+
+  FacetFilterController(this._db);
 
   void setSearchQuery(String value) {
     _state = _state.copyWith(searchQuery: value);
     notifyListeners();
   }
 
-  void togglePlatform(PlatformEnum platform) {
-    final platforms = Set<PlatformEnum>.from(_state.platforms);
-    if (platforms.contains(platform)) {
-      platforms.remove(platform);
-    } else {
-      platforms.add(platform);
-    }
-    _state = _state.copyWith(platforms: platforms);
-    notifyListeners();
-  }
-
   void setPlatform(PlatformEnum? platform) {
-    _state = _state.copyWith(
-      platforms: platform == null ? {} : {platform},
-    );
-    notifyListeners();
-  }
-
-  void toggleContentType(ContentTypeEnum type) {
-    final types = Set<ContentTypeEnum>.from(_state.contentTypes);
-    if (types.contains(type)) {
-      types.remove(type);
-    } else {
-      types.add(type);
-    }
-    _state = _state.copyWith(contentTypes: types);
+    _state = _state.copyWith(platforms: platform == null ? {} : {platform});
     notifyListeners();
   }
 
   void setContentType(ContentTypeEnum? type) {
-    _state = _state.copyWith(
-      contentTypes: type == null ? {} : {type},
-    );
-    notifyListeners();
-  }
-
-  void setDateRange(DateTimeRange? range) {
-    _state = _state.copyWith(savedDateRange: range);
+    _state = _state.copyWith(contentTypes: type == null ? {} : {type});
     notifyListeners();
   }
 
@@ -130,28 +117,56 @@ class FacetFilterController extends ChangeNotifier {
   }
 
   void toggleFavorite() {
-    _state = _state.copyWith(
-      isFavorite: _state.isFavorite == true ? null : true,
-    );
+    _state = _state.copyWith(isFavorite: _state.isFavorite == true ? null : true);
     notifyListeners();
   }
 
   void toggleArchived() {
-    _state = _state.copyWith(
-      isArchived: _state.isArchived == true ? null : true,
-    );
+    _state = _state.copyWith(isArchived: _state.isArchived == true ? null : true);
+    notifyListeners();
+  }
+
+  Future<void> setCollection(String? collectionId) async {
+    _state = _state.copyWith(collectionId: collectionId);
+    if (collectionId != null) {
+      await _loadCollectionItemIds(collectionId);
+    }
+    notifyListeners();
+  }
+
+  Future<void> setTag(String? tagId) async {
+    _state = _state.copyWith(tagId: tagId);
+    if (tagId != null) {
+      await _loadTagItemIds(tagId);
+    }
     notifyListeners();
   }
 
   void clearAll() {
     _state = const FacetFilterState();
+    _collectionItemIds = {};
+    _tagItemIds = {};
     notifyListeners();
   }
 
-  /// Filter a list of saved items against the current filter state.
+  Future<void> _loadCollectionItemIds(String collectionId) async {
+    final query = _db.select(_db.itemCollections)
+      ..where((t) => t.collectionId.equals(collectionId));
+    final results = await query.get();
+    _collectionItemIds = results.map((r) => r.itemId).toSet();
+  }
+
+  Future<void> _loadTagItemIds(String tagId) async {
+    final query = _db.select(_db.itemTags)
+      ..where((t) => t.tagId.equals(tagId));
+    final results = await query.get();
+    _tagItemIds = results.map((r) => r.itemId).toSet();
+  }
+
+  /// Filter items — synchronous, uses cached collection/tag IDs.
   List<SavedItem> applyFilter(List<SavedItem> items) {
     return items.where((item) {
-      // Text search — match title, description, note, originalUrl
+      // Text search
       if (_state.searchQuery.isNotEmpty) {
         final query = _state.searchQuery.toLowerCase();
         final title = (item.title ?? '').toLowerCase();
@@ -166,12 +181,8 @@ class FacetFilterController extends ChangeNotifier {
         }
       }
 
-      if (_state.platforms.isNotEmpty && !_state.platforms.contains(item.platform)) {
-        return false;
-      }
-      if (_state.contentTypes.isNotEmpty && !_state.contentTypes.contains(item.contentType)) {
-        return false;
-      }
+      if (_state.platforms.isNotEmpty && !_state.platforms.contains(item.platform)) return false;
+      if (_state.contentTypes.isNotEmpty && !_state.contentTypes.contains(item.contentType)) return false;
       if (_state.savedDateRange != null) {
         final savedDate = DateTime.fromMillisecondsSinceEpoch(item.savedAt);
         if (savedDate.isBefore(_state.savedDateRange!.start) ||
@@ -179,21 +190,14 @@ class FacetFilterController extends ChangeNotifier {
           return false;
         }
       }
-      if (_state.hasNote == true && (item.note == null || item.note!.isEmpty)) {
-        return false;
-      }
-      if (_state.hasNote == false && item.note != null && item.note!.isNotEmpty) {
-        return false;
-      }
-      if (_state.whySaved != null && item.whySaved != _state.whySaved) {
-        return false;
-      }
-      if (_state.isFavorite == true && !item.isFavorite) {
-        return false;
-      }
-      if (_state.isArchived == true && !item.isArchived) {
-        return false;
-      }
+      if (_state.hasNote == true && (item.note == null || item.note!.isEmpty)) return false;
+      if (_state.hasNote == false && item.note != null && item.note!.isNotEmpty) return false;
+      if (_state.whySaved != null && item.whySaved != _state.whySaved) return false;
+      if (_state.isFavorite == true && !item.isFavorite) return false;
+      if (_state.isArchived == true && !item.isArchived) return false;
+      if (_state.collectionId != null && !_collectionItemIds.contains(item.id)) return false;
+      if (_state.tagId != null && !_tagItemIds.contains(item.id)) return false;
+
       return true;
     }).toList();
   }

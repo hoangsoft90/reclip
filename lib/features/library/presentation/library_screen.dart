@@ -28,7 +28,7 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   bool _isGridView = true;
-  final _filterController = FacetFilterController();
+  late final FacetFilterController _filterController;
   final _connectivityService = ConnectivityService();
   bool _isOnline = true;
   Map<String, String> _thumbnailPaths = {};
@@ -36,6 +36,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   @override
   void initState() {
     super.initState();
+    _filterController = FacetFilterController(widget.db);
     _connectivityService.onlineStatusStream.listen((online) {
       if (mounted) setState(() => _isOnline = online);
     });
@@ -107,7 +108,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             onItemTap: (item) => _openDetail(item),
           ),
           // Filter bar
-          FacetFilterBar(controller: _filterController),
+          FacetFilterBar(controller: _filterController, db: widget.db),
           // Items
           Expanded(
             child: StreamBuilder<List<SavedItem>>(
