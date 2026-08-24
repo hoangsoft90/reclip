@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reclip/core/database/database.dart';
-import 'package:reclip/core/utils/id_generator.dart';
 import 'package:reclip/features/rediscovery/application/rediscovery_service.dart';
 import 'package:reclip/features/rediscovery/presentation/resurface_card.dart';
 

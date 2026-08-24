@@ -21,28 +21,17 @@ class EnrichmentOrchestrator {
     final pendingItems = await _dao.findByMetadataStatus(MetadataStatusEnum.pending);
     if (pendingItems.isEmpty) return;
 
-    final pool = <Future<void>>[];
-    final completer = <int, bool>{};
-
-    for (int i = 0; i < pendingItems.length; i++) {
-      if (pool.length >= _maxConcurrent) {
-        // Wait for any to complete
-        await Future.any(pool);
-        // Remove completed futures
-        pool.removeWhere((f) {
-          // Check if future is done by attempting to complete
-          return completer.containsKey(pool.indexOf(f));
-        });
-        // Simple approach: just wait then clear
-        completer.clear();
-      }
-      final index = pool.length;
-      completer[index] = false;
-      pool.add(_enrichOne(pendingItems[i]).then((_) {
-        completer[index] = true;
-      }));
+    // Process in batches of _maxConcurrent
+    for (var i = 0; i < pendingItems.length; i += _maxConcurrent) {
+      final batch = pendingItems.sublist(
+        i,
+        (i + _maxConcurrent).clamp(0, pendingItems.length),
+      );
+      await Future.wait(
+        batch.map((item) => _enrichOne(item)),
+        eagerError: true,
+      );
     }
-    await Future.wait(pool);
     MetricsLogger.logEvent('enrichment_queue_completed');
   }
 

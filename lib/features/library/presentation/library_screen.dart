@@ -1,4 +1,3 @@
-import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:reclip/core/constants/app_strings.dart';
 import 'package:reclip/core/database/database.dart';

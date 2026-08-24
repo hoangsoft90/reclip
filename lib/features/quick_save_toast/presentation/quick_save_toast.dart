@@ -160,7 +160,9 @@ class QuickSaveToastOverlay {
           bottom: 0,
           left: 0,
           right: 0,
-          child: QuickSaveToast(
+          child: SafeArea(
+            top: false,
+            child: QuickSaveToast(
             item: item,
             db: db,
             isNew: isNew,
@@ -170,6 +172,7 @@ class QuickSaveToastOverlay {
               } catch (_) {}
               _currentEntry = null;
             },
+          ),
           ),
         ),
       );

@@ -41,7 +41,8 @@ class ItemDetailScreen extends StatelessWidget {
                 id: item.id,
                 isFavorite: !item.isFavorite,
               );
-              if (context.mounted) Navigator.of(context).pop();
+              // Don't pop — user expects to stay on detail screen
+              // The Library screen will auto-refresh via StreamBuilder
             },
           ),
           IconButton(
