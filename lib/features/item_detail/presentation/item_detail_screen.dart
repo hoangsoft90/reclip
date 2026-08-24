@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:reclip/core/constants/app_strings.dart';
 import 'package:reclip/core/constants/platforms.dart';
 import 'package:reclip/core/database/database.dart';
-import 'package:reclip/features/item_detail/application/open_original_service.dart';
-import 'package:reclip/features/item_detail/presentation/edit_note_why_sheet.dart';
 import 'package:reclip/features/smart_save/presentation/smart_save_bottom_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final SavedItem item;
@@ -82,22 +81,12 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               onSelected: (value) => _handleMenuAction(value),
               itemBuilder: (context) => [
                 PopupMenuItem(
-                  value: 'edit_note',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit_note, color: Colors.grey.shade700, size: 20),
-                      const SizedBox(width: 12),
-                      const Text('Edit note'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'edit_details',
+                  value: 'edit',
                   child: Row(
                     children: [
                       Icon(Icons.edit, color: Colors.grey.shade700, size: 20),
                       const SizedBox(width: 12),
-                      const Text('Add details'),
+                      const Text('Edit all details'),
                     ],
                   ),
                 ),
@@ -264,14 +253,34 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     // Tags chips
                     _buildTagsSection(),
                     const SizedBox(height: 16),
-                    // Note + Why — show when data exists
-                    if ((_item.note != null && _item.note!.isNotEmpty) ||
-                        _item.whySaved != null)
+                    // ── Open link (compact row) ──
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 42,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _openOriginal(),
+                          icon: const Icon(Icons.open_in_new, size: 18),
+                          label: Text(
+                            _extractDomain(_item.canonicalUrl),
+                            style: const TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.black,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // ── Note + Why inline display (tap to edit) ──
+                    if (_hasNoteOrWhy())
                       GestureDetector(
-                        onTap: () async {
-                          await _showEditNoteWhySheet();
-                          await _reloadItem();
-                        },
+                        onTap: _openEditSheet,
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
@@ -285,17 +294,30 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                             children: [
                               Row(
                                 children: [
+                                  Icon(Icons.edit_note, size: 16, color: Colors.blue.shade600),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Edit note & why',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.blue.shade600,
+                                    ),
+                                  ),
                                   const Spacer(),
-                                  Icon(Icons.edit, size: 16, color: Colors.blue.shade600),
+                                  Icon(Icons.chevron_right, size: 18, color: Colors.blue.shade400),
                                 ],
                               ),
                               if (_item.note != null && _item.note!.isNotEmpty)
-                                Text(
-                                  _item.note!,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.blue.shade800,
-                                    fontStyle: FontStyle.italic,
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    _item.note!,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.blue.shade800,
+                                      fontStyle: FontStyle.italic,
+                                    ),
                                   ),
                                 ),
                               if (_item.whySaved != null)
@@ -307,76 +329,29 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                     backgroundColor: Colors.purple.shade50,
+                                    visualDensity: VisualDensity.compact,
                                   ),
                                 ),
                             ],
                           ),
                         ),
                       ),
-                    // Edit note/why button (when empty)
-                    if (_item.note == null &&
-                        (_item.note == null || _item.note!.isEmpty) &&
-                        _item.whySaved == null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            await _showEditNoteWhySheet();
-                            await _reloadItem();
-                          },
-                          icon: const Icon(Icons.edit, size: 16),
-                          label: const Text('Add note or why'),
-                        ),
-                      ),
-                    const SizedBox(height: 16),
-                    // Open Original button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final service = OpenOriginalService();
-                          final opened = await service.open(_item);
-                          if (!opened && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(AppStrings.openOriginalFailedSnackbar),
-                              ),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.open_in_new),
-                        label: const Text(AppStrings.openOriginalButton),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Smart Save (Add details)
+                    // ── Single Edit button ──
                     SizedBox(
                       width: double.infinity,
                       height: 48,
                       child: OutlinedButton.icon(
-                        onPressed: () async {
-                          await showModalBottomSheet(
-                            context: context,
-                            isScrollControlled: true,
-                            builder: (_) => SmartSaveBottomSheet(item: _item, db: widget.db),
-                          );
-                          await _reloadItem();
-                          await _loadCollectionsAndTags();
-                        },
-                        icon: const Icon(Icons.edit),
-                        label: const Text(AppStrings.addDetailsAction),
+                        onPressed: _openEditSheet,
+                        icon: const Icon(Icons.edit, size: 18),
+                        label: Text(
+                          _hasNoteOrWhy() ? 'Edit all details' : 'Add note, why & details',
+                          style: const TextStyle(fontSize: 14),
+                        ),
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
+                          side: BorderSide(color: Colors.grey.shade300),
                         ),
                       ),
                     ),
@@ -393,7 +368,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   // ── Thumbnail: local file → network URL → placeholder ──
 
   Widget _buildThumbnail(PlatformInfo platformInfo) {
-    return FutureBuilder<Thumbnail?>(
+    return GestureDetector(
+      onTap: _openOriginal,
+      child: FutureBuilder<Thumbnail?>(
       future: widget.db.findThumbnailByItemId(_item.id),
       builder: (context, snapshot) {
         final thumb = snapshot.data;
@@ -442,6 +419,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         // 3. Placeholder
         return _buildThumbnailPlaceholder(platformInfo);
       },
+    ),
     );
   }
 
@@ -667,18 +645,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   void _handleMenuAction(String action) async {
     switch (action) {
-      case 'edit_note':
-        await _showEditNoteWhySheet();
-        await _reloadItem();
-        break;
-      case 'edit_details':
-        await showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          builder: (_) => SmartSaveBottomSheet(item: _item, db: widget.db),
-        );
-        await _reloadItem();
-        await _loadCollectionsAndTags();
+      case 'edit':
+        await _openEditSheet();
         break;
       case 'archive':
         await widget.db.updateSavedItem(
@@ -724,12 +692,30 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   // ── Helpers ──
 
-  Future<void> _showEditNoteWhySheet() async {
+  bool _hasNoteOrWhy() {
+    return (_item.note != null && _item.note!.isNotEmpty) || _item.whySaved != null;
+  }
+
+  Future<void> _openEditSheet() async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => EditNoteWhySheet(item: _item, db: widget.db),
+      builder: (_) => SmartSaveBottomSheet(item: _item, db: widget.db),
     );
+    await _reloadItem();
+    await _loadCollectionsAndTags();
+  }
+
+  Future<void> _openOriginal() async {
+    final url = _item.originalUrl;
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.openOriginalFailedSnackbar)),
+      );
+    }
   }
 
   IconData _contentTypeIcon(ContentTypeEnum type) {
