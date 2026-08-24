@@ -147,7 +147,9 @@ class QuickSaveToastOverlay {
 
   static void show(BuildContext context, SavedItem item, bool isNew, AppDatabase db) {
     // Remove existing toast if any
-    _currentEntry?.remove();
+    try {
+      _currentEntry?.remove();
+    } catch (_) {}
     _currentEntry = null;
 
     // Try to get Overlay, skip if not available
@@ -163,7 +165,9 @@ class QuickSaveToastOverlay {
             db: db,
             isNew: isNew,
             onDismiss: () {
-              entry?.remove();
+              try {
+                entry?.remove();
+              } catch (_) {}
               _currentEntry = null;
             },
           ),

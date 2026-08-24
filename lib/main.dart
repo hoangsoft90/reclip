@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:reclip/core/database/database.dart';
 import 'package:reclip/core/network/http_client.dart';
@@ -52,9 +54,23 @@ final shareIntentHandlerProvider = Provider<ShareIntentHandler>((ref) {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    const ProviderScope(
-      child: ReclipApp(),
-    ),
-  );
+
+  // Global error handler — catch Flutter framework errors
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    // Log locally, don't send anywhere yet
+    debugPrint('[FlutterError] ${details.exceptionAsString()}');
+  };
+
+  // Catch async errors outside Flutter widget tree
+  runZonedGuarded(() {
+    runApp(
+      const ProviderScope(
+        child: ReclipApp(),
+      ),
+    );
+  }, (error, stack) {
+    debugPrint('[ZoneError] $error');
+    debugPrint('$stack');
+  });
 }
