@@ -1,125 +1,224 @@
 # item-detail
 
 ## Purpose
-Hiển thị chi tiết 1 saved item: thumbnail, title, platform, author, content type badge, description, note, why_saved badge, và các action (Open Original, Add details).
+Display full details of a saved item: tappable thumbnail, title, platform, author, content type badge, description, collections, tags, notes, why-saved, and actions (Open link, Edit all details).
 
 ## Requirements
 
-### REQ-1: Thumbnail / placeholder
-Hiển thị thumbnail ảnh nếu có, nếu không → placeholder icon + màu theo platform.
+### REQ-1: Tappable Thumbnail
+Thumbnail is tappable — opens the original URL in browser.
 
-**Scenario: Item có thumbnail**
-- Given: Item có thumbnail trong thumbnails table
-- When: Render detail screen
-- Then: Hiển thị `Image.network(thumbnailUrl)` với height 200
-- Reference: Container height 200 ở `lib/features/item_detail/presentation/item_detail_screen.dart:42-49`. **Hiện tại luôn hiện placeholder** vì `_getThumbnailLocalPath` chưa kết nối DB.
+**Scenario: Tap thumbnail**
+- Given: Item detail screen with thumbnail
+- When: User taps the thumbnail image
+- Then: Opens `item.originalUrl` via `url_launcher` in external browser
+- Reference: `_buildThumbnail()` wraps FutureBuilder in `GestureDetector(onTap: _openOriginal)`
 
-**Scenario: Item không có thumbnail**
-- Given: Item không có thumbnail
+**Scenario: Thumbnail with local file**
+- Given: Item has thumbnail with `downloadStatus = done` and `localPath` set
 - When: Render
-- Then: Container màu `platformInfo.color.withOpacity(0.1)` + icon platform lớn (size 64)
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:42-49`
+- Then: `Image.file(io.File(thumb.localPath!))` with height 200, BoxFit.cover
+- Reference: `_buildThumbnail()` — local file path check
 
-### REQ-2: Title + platform info
-Hiển thị title (hoặc domain nếu null), platform icon + name, và "Saved X ago".
+**Scenario: Thumbnail with remote URL**
+- Given: Item has thumbnail with `remoteUrl` set
+- When: Render
+- Then: `Image.network(thumb.remoteUrl!)` with loading indicator
+- Reference: `_buildThumbnail()` — network URL fallback
+
+**Scenario: No thumbnail**
+- Given: Item has no thumbnail
+- When: Render
+- Then: Placeholder container with platform icon (size 64) and tinted background
+- Reference: `_buildThumbnailPlaceholder()`
+
+### REQ-2: Title + Platform Info
+Display title (or domain if null), platform icon + name, and "Saved X ago".
 
 **Scenario: Render header**
-- Given: Item có `title = "Flutter Guide"`, `platform = reddit`, `savedAt = 1h ago`
+- Given: Item has `title = "Flutter Guide"`, `platform = reddit`, `savedAt = 1h ago`
 - When: Render
 - Then: Title "Flutter Guide" (fontSize 20, bold) + Row(reddit icon + "Reddit" + "Saved 1h ago")
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:51-68`
+- Reference: `item_detail_screen.dart` — title and platform row
 
-### REQ-3: Content type badge
-Item có `contentType != unknown` hiện badge chip nhỏ.
-
-**Scenario: Video item**
-- Given: Item có `contentType = video`
-- When: Render
-- Then: Hiện chip với icon videocam + "VIDEO" (uppercase, fontSize 11, bold)
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:70-86`
-
-### REQ-4: Author info
-Item có `author != null` hiện dòng author.
-
-**Scenario: Item có author**
-- Given: Item có `author = "u/flutter_dev"`
-- When: Render
-- Then: Hiện Row với icon person_outline + "u/flutter_dev"
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:88-99`
-
-### REQ-5: Video badge "Video requires Internet"
-Item có `contentType = video` hiện badge cảnh báo.
+### REQ-3: Content Type Badge
+Item with `contentType != unknown` shows a small badge chip.
 
 **Scenario: Video item**
-- Given: Item có `contentType = video`
+- Given: Item has `contentType = video`
 - When: Render
-- Then: Hiện container cam với icon `videocam_off` + text "Video requires Internet"
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:101-114`
+- Then: Chip with videocam icon + "VIDEO" (uppercase, fontSize 11, bold)
+- Reference: Content type badge section
 
-### REQ-6: Online badge
-Mọi item đều hiện badge "⚠ Online to view".
+### REQ-4: Author Info
+Item with `author != null` shows author row.
 
-**Scenario: Luôn hiện**
-- Given: Bất kỳ item nào
+**Scenario: Item has author**
+- Given: Item has `author = "u/flutter_dev"`
 - When: Render
-- Then: Hiện container cam với icon `wifi_off` + text "⚠ Online to view"
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:116-128`
+- Then: Row with person_outline icon + "u/flutter_dev"
+- Reference: Author section
+
+### REQ-5: Video Badge
+Item with `contentType = video` shows "Video requires Internet" warning.
+
+**Scenario: Video item**
+- Given: Item has `contentType = video`
+- When: Render
+- Then: Orange container with videocam_off icon + "Video requires Internet"
+- Reference: Video badge section
+
+### REQ-6: Online Badge
+All items show "⚠ Online to view" badge.
+
+**Scenario: Always shown**
+- Given: Any item
+- When: Render
+- Then: Orange container with wifi_off icon + "⚠ Online to view"
+- Reference: Online badge section
 
 ### REQ-7: Description
-Item có `description != null && description.isNotEmpty` hiện text description.
+Item with `description != null && description.isNotEmpty` shows description text.
 
-**Scenario: Có description**
-- Given: Item có `description = "A comprehensive guide..."`
+**Scenario: Has description**
+- Given: Item has `description = "A comprehensive guide..."`
 - When: Render
-- Then: Hiện text description với `fontSize 14`, `height 1.5`, color `grey.shade700`
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:130-139`
+- Then: Text with fontSize 14, height 1.5, color grey.shade700
+- Reference: Description section
 
-### REQ-8: Note
-Item có `note != null && note.isNotEmpty` hiện container xanh dương nhạt.
+### REQ-8: Open Link Button
+Compact button at top of detail section opens original URL.
 
-**Scenario: Có note**
-- Given: Item có `note = "Read this later"`
+**Scenario: Tap Open link**
+- Given: Item detail screen
+- When: User taps the "Open link" button
+- Then: `url_launcher` opens `item.originalUrl` in external browser
+- Reference: `_openOriginal()` method — uses `canLaunchUrl` + `launchUrl`
+
+**Scenario: Button shows domain**
+- Given: Item has `canonicalUrl = "https://reddit.com/r/flutter"`
 - When: Render
-- Then: Hiện Container `Colors.blue.shade50` với text italic `Colors.blue.shade800`
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:141-152`
+- Then: Button shows "reddit.com" as label with open_in_new icon
+- Reference: Open link button — `_extractDomain(_item.canonicalUrl)`
 
-### REQ-9: Why saved badge
-Item có `whySaved != null` hiện chip với label từ `AppStrings.whySavedOptions`.
+### REQ-9: Note + Why Saved Inline Display
+When note or why-saved exists, show inline with tap to edit.
 
-**Scenario: Có why_saved**
-- Given: Item có `whySaved = "read_later"`
+**Scenario: Has note or why-saved**
+- Given: Item has `note = "Read this"` or `whySaved = "read_later"`
 - When: Render
-- Then: Hiện Chip với text "Read later", background `Colors.purple.shade50`
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:154-163`
+- Then: Blue container with "Edit note & why" header + chevron_right, note text (italic), why-saved chip
+- Reference: `_hasNoteOrWhy()` check + GestureDetector wrapping inline display
 
-### REQ-10: Open Original button
-Nút "Open Original" mở URL gốc qua `OpenOriginalService`.
+**Scenario: Tap inline display**
+- Given: Inline note display visible
+- When: User taps the container
+- Then: Opens SmartSaveBottomSheet for editing
+- Reference: `onTap: _openEditSheet`
 
-**Scenario: Bấm Open Original**
+### REQ-10: Single Edit Button
+One button that opens SmartSaveBottomSheet with all fields (note, why, collections, tags).
+
+**Scenario: No existing data**
+- Given: Item has no note, no why-saved
+- When: Render
+- Then: Button shows "Add note, why & details"
+- Reference: `_hasNoteOrWhy() == false` → button label
+
+**Scenario: Has existing data**
+- Given: Item has note or why-saved
+- When: Render
+- Then: Button shows "Edit all details"
+- Reference: `_hasNoteOrWhy() == true` → button label
+
+**Scenario: Tap edit button**
 - Given: Item detail screen
-- When: Bấm nút "Open Original"
-- Then: Gọi `OpenOriginalService().open(item)` → mở browser. Nếu fail → hiện SnackBar error
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:165-183`
+- When: User taps the edit button
+- Then: `showModalBottomSheet` → `SmartSaveBottomSheet(item: _item, db: widget.db)` → reload item + collections + tags on dismiss
+- Reference: `_openEditSheet()` method
 
-### REQ-11: Add details button
-Nút "Add details" mở SmartSaveBottomSheet.
+### REQ-11: Collections Section
+Display collections assigned to this item with add/remove.
 
-**Scenario: Bấm Add details**
-- Given: Item detail screen
-- When: Bấm nút "Add details"
-- Then: `showModalBottomSheet` → `SmartSaveBottomSheet(item: item)`
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:185-199`
+**Scenario: Has collections**
+- Given: Item belongs to collections ["Recipes", "Travel"]
+- When: Render
+- Then: Wrap with Chips showing collection names, each with delete icon
+- Reference: `_buildCollectionsSection()`
 
-### REQ-12: Favorite toggle (chưa implement)
-Nút star trên AppBar toggle `isFavorite`. Hiện tại chỉ render icon, onPressed rỗng.
+**Scenario: No collections**
+- Given: Item has no collections
+- When: Render
+- Then: "No collections yet" text
+- Reference: `_buildCollectionsSection()`
 
-**Scenario: Toggle favorite**
-- Given: Item detail screen
-- When: Bấm nút star
-- Then: **Chưa implement** — `onPressed: () {}`
-- Reference: `lib/features/item_detail/presentation/item_detail_screen.dart:22-29`
+**Scenario: Add collection**
+- Given: User taps "+ Add" in collections section
+- When: `_showAddCollectionSheet()` called
+- Then: BottomSheet with collection picker (existing + inline create new)
+- Reference: `_CollectionPickerSheet` widget
+
+### REQ-12: Tags Section
+Display tags assigned to this item with add/remove.
+
+**Scenario: Has tags**
+- Given: Item has tags ["tutorial", "flutter"]
+- When: Render
+- Then: Wrap with green Chips showing "#tutorial", "#flutter", each with delete icon
+- Reference: `_buildTagsSection()`
+
+**Scenario: Add tag**
+- Given: User taps "+ Add" in tags section
+- When: `_showAddTagDialog()` called
+- Then: AlertDialog with TextField → user types tag name → Add
+- Reference: `_showAddTagDialog()` method
+
+### REQ-13: Favorite Toggle
+Star icon in AppBar toggles `isFavorite`.
+
+**Scenario: Toggle favorite on**
+- Given: Item has `isFavorite = false`
+- When: Tap star icon
+- Then: `db.updateSavedItem(id: item.id, isFavorite: true)` → reload item → star turns amber
+- Reference: AppBar actions — star IconButton
+
+**Scenario: Toggle favorite off**
+- Given: Item has `isFavorite = true`
+- When: Tap star icon
+- Then: `db.updateSavedItem(id: item.id, isFavorite: false)` → reload item → star turns border only
+- Reference: AppBar actions — star IconButton
+
+### REQ-14: Menu Actions
+Three-dot menu with Edit, Archive, Delete.
+
+**Scenario: Edit**
+- Given: Tap ⋮ → "Edit all details"
+- When: Selected
+- Then: Opens SmartSaveBottomSheet
+- Reference: `_handleMenuAction('edit')`
+
+**Scenario: Archive/Unarchive**
+- Given: Tap ⋮ → "Archive"
+- When: Selected
+- Then: Toggle `isArchived` → show SnackBar confirmation
+- Reference: `_handleMenuAction('archive')`
+
+**Scenario: Delete**
+- Given: Tap ⋮ → "Delete"
+- When: Selected
+- Then: AlertDialog confirmation → `db.deleteItem(id)` → Navigator.pop
+- Reference: `_handleMenuAction('delete')`
+
+### REQ-15: PopScope Back Handling
+Back button touches last accessed timestamp.
+
+**Scenario: Pop screen**
+- Given: User presses back
+- When: `onPopInvokedWithResult` fires with `didPop = true`
+- Then: `db.touchLastAccessed(item.id)` updates timestamp
+- Reference: PopScope wrapper
 
 ## Cần làm rõ
-- Favorite toggle và Options menu đều có `onPressed: () {}` — chưa implement. Đây là Phase 3 work.
-- Thumbnail display đã được kết nối: FutureBuilder query `findThumbnailByItemId()`, dùng `Image.file()` cho local cached thumbnail. Fallback placeholder khi chưa có.
-- Cả "Online to view" và "Video requires Internet" badge đều hiện cùng lúc cho video items — có thể redundancy.
+- `edit_note_why_sheet.dart` đã bị xóa — tất cả edit giờ qua `SmartSaveBottomSheet`
+- Thumbnail dùng `FutureBuilder<Thumbnail?>` query từ DB, hỗ trợ local file → network URL → placeholder
+- `_openOriginal()` dùng `url_launcher` trực tiếp thay vì `OpenOriginalService`

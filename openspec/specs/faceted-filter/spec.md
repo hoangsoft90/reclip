@@ -1,97 +1,188 @@
 # faceted-filter
 
 ## Purpose
-Lọc items trong Library theo nhiều tiêu chí kết hợp: platform, content type, ngày lưu, có note, why_saved. Chạy hoàn toàn local trên danh sách items từ DB.
+Filter items in Library by multiple combined criteria: text search, platform, content type, why-saved, collection, tag, favorites, archived. Runs entirely local on the item list from DB.
 
 ## Requirements
 
-### REQ-1: Filter theo platform
-User chọn 1 hoặc nhiều platform → chỉ hiện items thuộc platform đã chọn.
+### REQ-1: Search Field
+Text search bar at top filters by title, description, note, and URL.
 
-**Scenario: Chọn Reddit**
-- Given: Library có items Reddit, YouTube, TikTok
-- When: Bấm chip "Reddit" trong FacetFilterBar
-- Then: Chỉ hiện items Reddit
-- Reference: `lib/features/library/application/facet_filter_controller.dart:24-31`, `lib/features/library/presentation/widgets/facet_filter_bar.dart:30-44`
+**Scenario: Type search query**
+- Given: Library with items containing various titles/notes
+- When: User types "flutter" in search bar
+- Then: Only items with "flutter" in title, description, note, or URL are shown
+- Reference: `FacetFilterState.searchQuery` — `_matchesSearch()` checks all text fields case-insensitively
 
-**Scenario: Chọn nhiều platform**
-- Given: Chọn Reddit + YouTube
+**Scenario: Clear search**
+- Given: Search query is "flutter"
+- When: Tap ✕ button in search field
+- Then: `searchQuery` cleared, all items shown (subject to other filters)
+- Reference: Search field clear button
+
+### REQ-2: Filter Toggle Button
+Compact toggle button shows/hides filter panel with active filter count badge.
+
+**Scenario: No active filters**
+- Given: No filters applied
+- When: Render filter bar
+- Then: 🔢 toggle button with no badge
+- Reference: `FacetFilterBar` — filter toggle button
+
+**Scenario: Has active filters**
+- Given: Platform = Reddit, Favorites = true
+- When: Render filter bar
+- Then: 🔢 button with badge showing "2"
+- Reference: `FacetFilterState.activeCount` computed property
+
+**Scenario: Tap toggle**
+- Given: Filter panel collapsed
+- When: Tap 🔢 button
+- Then: Filter panel expands showing all dropdowns and toggles
+- Reference: `_isExpanded` state in `FacetFilterBar`
+
+### REQ-3: Platform Dropdown
+Dropdown select for platform filtering (all platforms including Web/Other).
+
+**Scenario: Select platform**
+- Given: Filter expanded
+- When: Select "Reddit" from Platform dropdown
+- Then: `setPlatform(PlatformEnum.reddit)` → only Reddit items shown
+- Reference: `setPlatform()` in `FacetFilterController`
+
+**Scenario: Clear platform**
+- Given: Platform filter active
+- When: Select "All" from Platform dropdown
+- Then: `setPlatform(null)` → all platforms shown
+- Reference: `setPlatform(null)`
+
+### REQ-4: Content Type Dropdown
+Dropdown select for content type (video, image, text, link, mixed, unknown).
+
+**Scenario: Select type**
+- Given: Filter expanded
+- When: Select "video" from Type dropdown
+- Then: `setContentType(ContentTypeEnum.video)` → only video items shown
+- Reference: `setContentType()` in `FacetFilterController`
+
+### REQ-5: Why Saved Dropdown
+Dropdown select for why-saved reason.
+
+**Scenario: Select reason**
+- Given: Filter expanded
+- When: Select "Read later" from Why saved dropdown
+- Then: `setWhySaved('read_later')` → only items with that reason shown
+- Reference: `setWhySaved()` in `FacetFilterController`
+
+### REQ-6: Collection Dropdown
+Dropdown populated from DB, filters items by collection membership.
+
+**Scenario: Select collection**
+- Given: Filter expanded, user has collections ["Recipes", "Travel"]
+- When: Select "Recipes" from Collection dropdown
+- Then: `setCollection(collectionId)` → only items in that collection shown
+- Reference: `setCollection()` — loads item IDs from `item_collections` table
+
+**Scenario: Dynamic refresh**
+- Given: User creates a new collection while filter is open
+- When: Filter panel rebuilds (`didUpdateWidget`)
+- Then: Collection dropdown refreshes to include new collection
+- Reference: `_loadCollectionsAndTags()` called in `didUpdateWidget`
+
+### REQ-7: Tag Dropdown
+Dropdown populated from DB, filters items by tag membership.
+
+**Scenario: Select tag**
+- Given: Filter expanded, user has tags ["tutorial", "flutter"]
+- When: Select "tutorial" from Tag dropdown
+- Then: `setTag(tagId)` → only items with that tag shown
+- Reference: `setTag()` — loads item IDs from `item_tags` table
+
+### REQ-8: Toggle Buttons (Favorites, Archived, Has Note)
+Compact toggle buttons for boolean filters.
+
+**Scenario: Toggle Favorites**
+- Given: Filter expanded
+- When: Tap ⭐ Favorites button
+- Then: `toggleFavorite()` → only favorite items shown
+- Reference: `toggleFavorite()` in `FacetFilterController`
+
+**Scenario: Toggle Archived**
+- Given: Filter expanded
+- When: Tap 📦 Archived button
+- Then: `toggleArchived()` → only archived items shown
+- Reference: `toggleArchived()` in `FacetFilterController`
+
+**Scenario: Toggle Has Note**
+- Given: Filter expanded
+- When: Tap 📝 Has note button
+- Then: `hasNote = true` → only items with notes shown
+- Reference: `hasNote` toggle in `FacetFilterController`
+
+### REQ-9: Active Filter Chips
+When panel is collapsed and filters are active, show compact chips.
+
+**Scenario: Show active chips**
+- Given: Platform = Reddit, Favorites = true
+- When: Filter panel collapsed
+- Then: Shows chips [📱 Reddit] [⭐ Fav] [✕ Clear all]
+- Reference: Active chips row in `FacetFilterBar`
+
+**Scenario: Clear individual chip**
+- Given: Active chip "Reddit" visible
+- When: Tap ✕ on chip
+- Then: That filter cleared, other filters remain
+- Reference: Chip delete callback
+
+### REQ-10: Clear All Filters
+"Clear all" button removes all active filters at once.
+
+**Scenario: Clear all**
+- Given: Multiple filters active
+- When: Tap "Clear all" button or chip
+- Then: All filters reset to null/false, all items shown
+- Reference: `clearAll()` in `FacetFilterController`
+
+### REQ-11: AND/OR Filter Logic
+Multiple filter groups use AND logic between groups, OR within same group.
+
+**Scenario: Platform + Favorites**
+- Given: Platform = Reddit, Favorites = true
 - When: Filter applied
-- Then: Hiện items Reddit HOẶC YouTube (OR logic)
+- Then: Only items that are Reddit AND Favorites
+- Reference: Filter logic — each group is AND'd together
+
+**Scenario: Multiple platforms**
+- Given: Platform = Reddit OR YouTube
+- When: Filter applied
+- Then: Items from either platform (OR within platform group)
 - Reference: `_state.platforms.contains(item.platform)` — set contains = OR
 
-### REQ-2: Filter theo content type
-User chọn video, image, hoặc text.
+### REQ-12: No Match State
+When filter returns 0 results, show "No items match filter".
 
-**Scenario: Chọn video**
-- Given: Library có items video, image, text
-- When: Bấm chip "video"
-- Then: Chỉ hiện items có `contentType = video`
-- Reference: `lib/features/library/application/facet_filter_controller.dart:33-40`
-
-### REQ-3: Filter theo "Has note"
-Chip "Has note" toggle: null (không lọc) → true (có note) → null.
-
-**Scenario: Bật Has note**
-- Given: Library có items có note và không có note
-- When: Bấm chip "Has note"
-- Then: Chỉ hiện items có `note != null && note.isNotEmpty`
-- Reference: `lib/features/library/application/facet_filter_controller.dart:48-50`, filter logic line 84-89
-
-### REQ-4: Filter theo "Why saved"
-User chọn 1 trong 5 options: read_later, try_this, learn_this, inspiration, just_interesting.
-
-**Scenario: Chọn "Read later"**
-- Given: Library có items với nhiều why_saved values
-- When: Mở bottom sheet → chọn "Read later"
-- Then: Chỉ hiện items có `whySaved == "read_later"`
-- Reference: `lib/features/library/application/facet_filter_controller.dart:52-54`, `facet_filter_bar.dart:82-100`
-
-### REQ-5: Filter theo ngày lưu (date range)
-User chọn date range → chỉ hiện items saved trong khoảng đó.
-
-**Scenario: Chọn range**
-- Given: Library có items từ nhiều ngày
-- When: Set `savedDateRange = DateTimeRange(start: ..., end: ...)`
-- Then: Chỉ hiện items có `savedAt` nằm trong range (so sánh epoch millis)
-- Reference: `lib/features/library/application/facet_filter_controller.dart:96-102`
-
-### REQ-6: Kết hợp nhiều filter (AND logic)
-Nhiều filter cùng lúc = AND giữa các nhóm, OR trong cùng nhóm.
-
-**Scenario: Platform + Has note**
-- Given: Chọn platform = TikTok, Has note = true
+**Scenario: Empty result**
+- Given: Library has items but none match filter
 - When: Filter applied
-- Then: Chỉ hiện items TikTok VÀ có note
-- Reference: Filter logic `lib/features/library/application/facet_filter_controller.dart:78-105`
+- Then: "No items match filter" text shown
+- Reference: Library screen empty filter state
 
-### REQ-7: Clear all filters
-Nút "Clear" hiện khi có filter active, bấm → xóa tất cả filter.
+### REQ-13: Filter Bar Layout
+Compact design: search field + toggle button on one row, expandable panel below.
 
-**Scenario: Clear**
-- Given: Đang filter Reddit + Has note
-- When: Bấm chip "Clear"
-- Then: Tất cả filter bị xóa, hiện lại toàn bộ items
-- Reference: `lib/features/library/application/facet_filter_controller.dart:60-63`, `facet_filter_bar.dart:70-76`
-
-### REQ-8: No match state
-Khi filter trả về 0 results → hiện text "No items match filter".
-
-**Scenario: Không có kết quả**
-- Given: Library có items nhưng filter không match cái nào
-- When: Filter applied
-- Then: Hiện "No items match filter" thay vì list rỗng
-- Reference: `lib/features/library/presentation/library_screen.dart:72-77`
-
-### REQ-9: FacetFilterBar UI
-Thanh filter ngang phía trên Library, có thể scroll ngang.
-
-**Scenario: Render filter bar**
+**Scenario: Collapsed view**
 - Given: Library screen
 - When: Render
-- Then: SizedBox height 48, ListView horizontal chứa các FilterChip (platform, content type, has note) + ActionChip (why saved, clear)
-- Reference: `lib/features/library/presentation/widgets/facet_filter_bar.dart:17-78`
+- Then: Row with search TextField + 🔢 toggle button
+- Reference: `FacetFilterBar` — collapsed layout
+
+**Scenario: Expanded view**
+- Given: Filter panel expanded
+- When: Render
+- Then: Search field + Platform/Type/Why saved/Collection/Tag dropdowns + Favorites/Archived/Has note toggles + Clear button
+- Reference: `FacetFilterBar` — expanded layout
 
 ## Cần làm rõ
-- Filter chạy client-side trên danh sách items từ `StreamBuilder` — KHÔNG query DB. Nghĩa là tất cả items phải được load vào memory trước khi filter. Nếu library rất lớn (hàng nghìn items), performance có thể chậm. Ở Phase 2-3 với quy mô MVP, điều này chấp nhận được.
-- Date range picker hiện chưa có UI — `setDateRange` có method nhưng FacetFilterBar chưa render date picker chip. Cần thêm UI nếu muốn dùng tính năng này.
+- Filter runs client-side on items from `StreamBuilder` — all items loaded into memory before filtering
+- Collection/tag item IDs are cached in controller when filter is selected (to keep `applyFilter()` sync for StreamBuilder)
+- `didUpdateWidget()` refreshes collection/tag lists from DB when parent rebuilds
