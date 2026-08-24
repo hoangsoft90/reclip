@@ -55,6 +55,33 @@ class FacetFilterBar extends StatelessWidget {
                     showCheckmark: false,
                   ),
                 ),
+              // Favorites chip
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: FilterChip(
+                  avatar: Icon(
+                    Icons.star,
+                    size: 16,
+                    color: state.isFavorite == true ? Colors.amber : null,
+                  ),
+                  label: const Text('Favorites', style: TextStyle(fontSize: 12)),
+                  selected: state.isFavorite == true,
+                  onSelected: (_) => controller.toggleFavorite(),
+                  selectedColor: Colors.amber.withOpacity(0.15),
+                  showCheckmark: false,
+                ),
+              ),
+              // Archived chip
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: FilterChip(
+                avatar: const Icon(Icons.archive, size: 16),
+                label: const Text('Archived', style: TextStyle(fontSize: 12)),
+                selected: state.isArchived == true,
+                onSelected: (_) => controller.toggleArchived(),
+                showCheckmark: false,
+              ),
+              ),
               // Has note chip
               Padding(
                 padding: const EdgeInsets.only(right: 6),

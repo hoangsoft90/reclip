@@ -7,6 +7,8 @@ class FacetFilterState {
   final DateTimeRange? savedDateRange;
   final bool? hasNote;
   final String? whySaved;
+  final bool? isFavorite;
+  final bool? isArchived;
 
   const FacetFilterState({
     this.platforms = const {},
@@ -14,6 +16,8 @@ class FacetFilterState {
     this.savedDateRange,
     this.hasNote,
     this.whySaved,
+    this.isFavorite,
+    this.isArchived,
   });
 
   bool get isEmpty =>
@@ -21,7 +25,9 @@ class FacetFilterState {
       contentTypes.isEmpty &&
       savedDateRange == null &&
       hasNote == null &&
-      whySaved == null;
+      whySaved == null &&
+      isFavorite == null &&
+      isArchived == null;
 
   FacetFilterState copyWith({
     Set<PlatformEnum>? platforms,
@@ -29,6 +35,8 @@ class FacetFilterState {
     DateTimeRange? savedDateRange,
     bool? hasNote,
     String? whySaved,
+    bool? isFavorite,
+    bool? isArchived,
   }) {
     return FacetFilterState(
       platforms: platforms ?? this.platforms,
@@ -36,6 +44,8 @@ class FacetFilterState {
       savedDateRange: savedDateRange ?? this.savedDateRange,
       hasNote: hasNote ?? this.hasNote,
       whySaved: whySaved ?? this.whySaved,
+      isFavorite: isFavorite ?? this.isFavorite,
+      isArchived: isArchived ?? this.isArchived,
     );
   }
 }
@@ -81,6 +91,20 @@ class FacetFilterController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void toggleFavorite() {
+    _state = _state.copyWith(
+      isFavorite: _state.isFavorite == true ? null : true,
+    );
+    notifyListeners();
+  }
+
+  void toggleArchived() {
+    _state = _state.copyWith(
+      isArchived: _state.isArchived == true ? null : true,
+    );
+    notifyListeners();
+  }
+
   void clearAll() {
     _state = const FacetFilterState();
     notifyListeners();
@@ -109,6 +133,12 @@ class FacetFilterController extends ChangeNotifier {
         return false;
       }
       if (_state.whySaved != null && item.whySaved != _state.whySaved) {
+        return false;
+      }
+      if (_state.isFavorite == true && !item.isFavorite) {
+        return false;
+      }
+      if (_state.isArchived == true && !item.isArchived) {
         return false;
       }
       return true;
