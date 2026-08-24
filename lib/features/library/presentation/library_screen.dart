@@ -11,6 +11,7 @@ import 'package:reclip/features/library/presentation/widgets/facet_filter_bar.da
 import 'package:reclip/features/library/application/facet_filter_controller.dart';
 import 'package:reclip/features/rediscovery/presentation/resurface_section.dart';
 import 'package:reclip/features/backup/presentation/backup_settings_screen.dart';
+import 'package:reclip/features/settings/presentation/settings_screen.dart';
 import 'package:reclip/core/ads/banner_ad_widget.dart';
 import 'package:reclip/core/ads/ad_manager.dart';
 import 'package:reclip/main.dart';
@@ -61,7 +62,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'backup') {
+              if (value == 'settings') {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SettingsScreen(db: widget.db),
+                  ),
+                );
+              } else if (value == 'backup') {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => BackupSettingsScreen(db: widget.db),
@@ -70,6 +77,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'settings',
+                child: ListTile(
+                  leading: Icon(Icons.settings),
+                  title: Text('Settings'),
+                  dense: true,
+                ),
+              ),
               const PopupMenuItem(
                 value: 'backup',
                 child: ListTile(

@@ -15,6 +15,7 @@ import 'package:reclip/features/onboarding/application/onboarding_manager.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:reclip/core/ads/ad_manager.dart';
 import 'package:reclip/core/config/app_config.dart';
+import 'package:reclip/features/settings/domain/settings_provider.dart';
 import 'app.dart';
 
 const _sentryDsn = 'https://2800d4f2840f11d317041a3d24a77194@o4505474077753344.ingest.us.sentry.io/4511963247083520';
@@ -103,9 +104,15 @@ void main() async {
         debugPrint('[FlutterError] ${details.exceptionAsString()}');
       };
 
+      // Initialize SharedPreferences for settings
+      final prefs = await SharedPreferences.getInstance();
+
       runApp(
-        const ProviderScope(
-          child: ReclipApp(),
+        ProviderScope(
+          overrides: [
+            settingsProvider.overrideWith((ref) => SettingsNotifier(prefs)),
+          ],
+          child: const ReclipApp(),
         ),
       );
     }, (error, stack) {
