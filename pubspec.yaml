@@ -31,6 +31,8 @@ dependencies:
   crypto: ^3.0.5
   # Monitoring
   sentry_flutter: ^8.9.0
+  # Onboarding
+  shared_preferences: ^2.2.3
 
 dev_dependencies:
   flutter_test:

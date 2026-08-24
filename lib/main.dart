@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:reclip/core/database/database.dart';
 import 'package:reclip/core/network/http_client.dart';
 import 'package:reclip/features/share_intent/share_intent_handler.dart';
@@ -10,6 +11,7 @@ import 'package:reclip/features/share_intent/quick_save_service.dart';
 import 'package:reclip/features/metadata/metadata_adapter_factory.dart';
 import 'package:reclip/features/metadata/application/enrichment_orchestrator.dart';
 import 'package:reclip/features/metadata/application/thumbnail_download_service.dart';
+import 'package:reclip/features/onboarding/application/onboarding_manager.dart';
 import 'app.dart';
 
 const _sentryDsn = 'https://2800d4f2840f11d317041a3d24a77194@o4505474077753344.ingest.us.sentry.io/4511963247083520';
@@ -44,6 +46,14 @@ final enrichmentOrchestratorProvider = Provider<EnrichmentOrchestrator>((ref) {
   final factory = ref.watch(metadataAdapterFactoryProvider);
   final thumbnailService = ref.watch(thumbnailDownloadServiceProvider);
   return EnrichmentOrchestrator(db, factory, thumbnailService);
+});
+
+// OnboardingManager provider
+final onboardingManagerProvider = FutureProvider<OnboardingManager>((ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  final manager = OnboardingManager(prefs);
+  ref.onDispose(() => manager.dispose());
+  return manager;
 });
 
 // ShareIntentHandler provider
