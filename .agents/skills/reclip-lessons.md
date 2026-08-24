@@ -468,6 +468,218 @@ package_info_plus: ^8.1.3
 
 ---
 
+## 15. 🚨 Flutter — StatelessWidget Detail Screen Won't Update After DB Edits
+
+### Symptom
+User edits note/why/details on ItemDetailScreen, saves, but UI still shows old data.
+
+### Root Cause
+`ItemDetailScreen` was a `StatelessWidget` receiving a `SavedItem` data object. After DB update, the widget doesn't rebuild because there's no state change mechanism.
+
+### ❌ WRONG
+```dart
+class ItemDetailScreen extends StatelessWidget {
+  final SavedItem item; // ← immutable data object
+  // No way to refresh after DB update
+}
+```
+
+### ✅ CORRECT
+```dart
+class ItemDetailScreen extends StatefulWidget {
+  @override
+  State<ItemDetailScreen> createState() => _ItemDetailScreenState();
+}
+
+class _ItemDetailScreenState extends State<ItemDetailScreen> {
+  late SavedItem _item; // ← mutable state
+
+  @override
+  void initState() {
+    super.initState();
+    _item = widget.item;
+  }
+
+  Future<void> _reloadItem() async {
+    final fresh = await widget.db.getSavedItemById(_item.id);
+    if (fresh != null && mounted) setState(() => _item = fresh);
+  }
+}
+```
+
+### Rule
+> **Any screen where the user can edit data MUST be StatefulWidget with a `_reloadItem()` method that re-queries the DB after every save.**
+
+---
+
+## 16. 🚨 Drift — select() Not Public From Outside Database Class
+
+### Error
+```
+The method 'select' isn't defined for the type 'AppDatabase'.
+```
+
+### Root Cause
+Drift's `select()` method is inherited from `_$AppDatabaseGenerated` and is not accessible from classes outside the database file.
+
+### ❌ WRONG
+```dart
+// In ItemDetailScreen or any non-database file:
+final fresh = await (widget.db.select(widget.db.savedItems)
+  ..where((t) => t.id.equals(id)))
+  .getSingleOrNull(); // ← ERROR: select() not public
+```
+
+### ✅ CORRECT — Add public method to database.dart
+```dart
+// In database.dart:
+Future<SavedItem?> getSavedItemById(String id) async {
+  return (select(savedItems)..where((t) => t.id.equals(id))).getSingleOrNull();
+}
+
+// In other files:
+final fresh = await widget.db.getSavedItemById(id); // ← OK
+```
+
+### Rule
+> **Never call `select()` from outside database.dart. Always add public getter/query methods.**
+
+---
+
+## 17. 🚨 Flutter — Share Intent Saves But Doesn't Navigate
+
+### Symptom
+User shares a link from another app → Reclip saves it + shows toast → but stays on old screen instead of navigating to the new item.
+
+### Root Cause
+`ShareIntentHandler` emitted raw URL string. `app.dart` only showed a toast — no navigation logic.
+
+### ❌ WRONG
+```dart
+// ShareIntentHandler — emits URL string
+final _onShareController = StreamController<String>.broadcast();
+Stream<String> get onShare => _onShareController.stream;
+
+// app.dart — only shows toast, no navigation
+handler.onShare.listen((url) {
+  _showQuickSaveToast(url); // ← no Navigator.push
+});
+```
+
+### ✅ CORRECT
+```dart
+// ShareIntentHandler — emits SaveResult with SavedItem
+final _onSaveController = StreamController<SaveResult>.broadcast();
+Stream<SaveResult> get onSave => _onSaveController.stream;
+
+// app.dart — show toast THEN navigate
+handler.onSave.listen((result) {
+  final item = result.item;
+  QuickSaveToastOverlay.show(context, item, result.isNew, db);
+  Future.delayed(const Duration(milliseconds: 800), () {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ItemDetailScreen(item: item, db: db)),
+    );
+  });
+});
+```
+
+### Rule
+> **Share intent flow must: save → emit SavedItem → navigate to detail screen. Never just show a toast.**
+
+---
+
+## 18. 🚨 Flutter — IndexedStack + autofocus = Keyboard on Wrong Tab
+
+### Symptom
+App opens on Library tab but keyboard is visible. Search tab's TextField has focus even though it's not visible.
+
+### Root Cause
+`IndexedStack` builds ALL children simultaneously (not lazily). If `SearchScreen` has `autofocus: true` on its TextField, the widget builds and requests focus even when not the active tab.
+
+### ❌ WRONG
+```dart
+// app.dart
+IndexedStack(
+  index: _currentIndex,
+  children: [
+    LibraryScreen(),  // visible
+    SearchScreen(),   // hidden BUT still built!
+  ],
+)
+
+// search_screen.dart
+TextField(
+  autofocus: true,  // ← triggers even when tab is hidden
+)
+```
+
+### ✅ CORRECT
+```dart
+// search_screen.dart — remove autofocus
+textField(
+  // NO autofocus
+  decoration: InputDecoration(hintText: 'Search library…'),
+  onTapOutside: (_) => FocusScope.of(context).unfocus(),
+)
+```
+
+### Rule
+> **With IndexedStack, NEVER use `autofocus: true` on widgets in non-default tabs. Use manual focus triggers instead (e.g., tap to focus).**
+
+---
+
+## 19. 🚨 Flutter — Share Intent Cold Start Timing
+
+### Symptom
+Share intent works when app is already running (warm start) but not when app is launched from share (cold start).
+
+### Root Cause
+`ShareIntentHandler.init()` is called from provider creation (ProviderScope mount). `getInitialMedia()` resolves before `app.dart` attaches its listener via `addPostFrameCallback`. Result emitted → no listener → lost.
+
+### ❌ WRONG
+```dart
+void init() {
+  // Provider creates handler → init() called immediately
+  ReceiveSharingIntent.instance.getInitialMedia().then((files) {
+    _handleShare(file.path); // ← emits SaveResult
+    // But app.dart listener not attached yet!
+  });
+}
+```
+
+### ✅ CORRECT — Queue pending result
+```dart
+SaveResult? _pendingResult;
+
+void _handleShare(String rawContent) {
+  final url = _extractUrl(rawContent);
+  if (url != null) {
+    _quickSaveService.quickSave(url).then((result) {
+      if (_onSaveController.hasListener) {
+        _onSaveController.add(result);  // warm start: listener ready
+      } else {
+        _pendingResult = result;         // cold start: queue it
+      }
+    });
+  }
+}
+
+// Called by app.dart after listener is attached:
+void emitPendingIfAny() {
+  if (_pendingResult != null) {
+    final result = _pendingResult!;
+    _pendingResult = null;
+    Future.microtask(() => _onSaveController.add(result));
+  }
+}
+```
+
+### Rule
+> **When using streams from provider init + post-frame listeners, always handle the cold-start race condition with a pending result queue.**
+
+---
+
 ## Quick Reference Checklist
 
 Before EVERY commit to main, verify:
@@ -485,6 +697,8 @@ Before EVERY commit to main, verify:
 [ ] Detail screens: StatefulWidget with _reloadItem() after every edit
 [ ] DB access outside database class: use public getter methods, not select()
 [ ] Share intent: emit SaveResult (not URL), navigate to detail after save
+[ ] IndexedStack: NO autofocus on non-default tabs
+[ ] Share intent cold start: queue pending result if listener not ready
 ```
 
 ---
@@ -509,3 +723,5 @@ Before EVERY commit to main, verify:
 | 2026-08-24 | StatelessWidget detail screen won't update after DB edits — use StatefulWidget + _reloadItem() | 🟡 Medium |
 | 2026-08-24 | Drift select() is not public from outside database class — add public getSavedItemById() method | 🟡 Medium |
 | 2026-08-24 | Share intent saves but doesn't navigate — emit SaveResult + Navigator.push after toast | 🟡 Medium |
+| 2026-08-24 | IndexedStack + autofocus = keyboard on wrong tab — remove autofocus, use manual focus | 🟡 Medium |
+| 2026-08-24 | Share intent cold start: listener not ready when getInitialMedia fires — queue pending result | 🟡 Medium |
