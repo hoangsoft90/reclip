@@ -17,7 +17,7 @@ class ResurfaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final platformInfo = PlatformInfo.fromEnum(item.platform);
+    final platformInfo = PlatformInfo.info[item.platform] ?? PlatformInfo.info[PlatformEnum.other]!;
 
     return GestureDetector(
       onTap: onTap,

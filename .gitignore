@@ -55,3 +55,4 @@ app.*.map.json
 
 # iOS (not in scope)
 /ios/
+lib/core/database/database.g.dart

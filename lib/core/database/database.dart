@@ -100,7 +100,7 @@ class Thumbnails extends Table {
 
 class ResurfaceHistory extends Table {
   TextColumn get id => text()();
-  TextColumn get itemId => text().references(SavedItems, #id, onDelete: KeyAction.cascade)();
+  TextColumn get itemId => text()();
   IntColumn get shownAt => integer()();
 
   @override
