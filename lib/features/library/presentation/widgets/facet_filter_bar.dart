@@ -302,13 +302,13 @@ class _FacetFilterBarState extends State<FacetFilterBar> {
                         icon: PlatformInfo.info[platform]?.icon ?? Icons.language,
                         label: PlatformInfo.info[platform]?.displayName ?? platform.name,
                         color: PlatformInfo.info[platform]?.color,
-                        onRemove: () => widget.controller.togglePlatform(platform),
+                        onRemove: () => widget.controller.setPlatform(null),
                       ),
                     for (final type in state.contentTypes)
                       _buildActiveChip(
                         icon: _contentTypeIcon(type),
                         label: type.name,
-                        onRemove: () => widget.controller.toggleContentType(type),
+                        onRemove: () => widget.controller.setContentType(null),
                       ),
                     if (state.isFavorite == true)
                       _buildActiveChip(
@@ -340,7 +340,7 @@ class _FacetFilterBarState extends State<FacetFilterBar> {
                         icon: Icons.folder,
                         label: _collections.firstWhere(
                           (c) => c.id == state.collectionId,
-                          orElse: () => Collection(id: '', name: 'Unknown', createdAt: 0),
+                          orElse: () => Collection(id: '', name: 'Unknown', isSmart: false, createdAt: 0),
                         ).name,
                         onRemove: () => widget.controller.setCollection(null),
                       ),
