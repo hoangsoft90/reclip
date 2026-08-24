@@ -62,7 +62,7 @@ class AdManager {
       listener: BannerAdListener(
         onAdLoaded: (ad) {
           debugPrint('[AdManager] Banner loaded');
-          onLoaded(ad);
+          onLoaded(ad as BannerAd);
         },
         onAdFailedToLoad: (ad, error) {
           debugPrint('[AdManager] Banner failed: ${error.message}');
@@ -134,7 +134,7 @@ class AdManager {
     RewardedAd.load(
       adUnitId: rewardedAdUnitId,
       request: const AdRequest(),
-      adLoadCallback: RewardedAdLoadCallback(
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           debugPrint('[AdManager] Rewarded loaded');
           _rewardedAd = ad;

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:reclip/core/constants/app_strings.dart';
 import 'package:reclip/core/database/database.dart';
@@ -295,7 +296,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final thumbnail = _getThumbnailLocalPath(item);
     if (thumbnail != null) {
       return Image.file(
-        io.File(thumbnail),
+        File(thumbnail),
         width: double.infinity,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _buildThumbnailPlaceholder(platformInfo),
@@ -310,7 +311,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Image.file(
-          io.File(thumbnail),
+          File(thumbnail),
           width: 48,
           height: 48,
           fit: BoxFit.cover,
