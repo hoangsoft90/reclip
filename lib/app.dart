@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:reclip/core/ads/ad_manager.dart';
+import 'package:reclip/core/config/app_config.dart';
 import 'package:reclip/features/library/presentation/library_screen.dart';
 import 'package:reclip/features/search/presentation/search_screen.dart';
 import 'package:reclip/features/quick_save_toast/presentation/quick_save_toast.dart';
@@ -17,16 +21,24 @@ class ReclipApp extends ConsumerStatefulWidget {
 class _ReclipAppState extends ConsumerState<ReclipApp>
     with WidgetsBindingObserver {
   int _currentIndex = 0;
+  int _saveCount = 0;
+  static const int _interstitialInterval = 5; // show interstitial every N saves
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadSaveCount();
     // Listen to share intents
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _setupShareIntentListener();
       _triggerEnrichment();
     });
+  }
+
+  Future<void> _loadSaveCount() async {
+    final prefs = await SharedPreferences.getInstance();
+    _saveCount = prefs.getInt('ad_save_counter') ?? 0;
   }
 
   @override
@@ -74,6 +86,34 @@ class _ReclipAppState extends ConsumerState<ReclipApp>
 
     // Trigger enrichment for new saves
     if (isNew) _triggerEnrichment();
+
+    // Interstitial ad: count saves and show every N
+    if (isNew && AppConfig.enableAds) {
+      _incrementAndMaybeShowInterstitial();
+    }
+  }
+
+  Future<void> _incrementAndMaybeShowInterstitial() async {
+    _saveCount++;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('ad_save_counter', _saveCount);
+
+    if (_saveCount >= _interstitialInterval) {
+      _saveCount = 0;
+      await prefs.setInt('ad_save_counter', 0);
+      _showInterstitialAd();
+    }
+  }
+
+  void _showInterstitialAd() {
+    final adManager = ref.read(adManagerProvider);
+    adManager.loadInterstitialAd(
+      onLoaded: () {
+        if (mounted) {
+          adManager.showInterstitialAd();
+        }
+      },
+    );
   }
 
   @override
